@@ -15,7 +15,6 @@
         android:gravity="center"
         android:paddingLeft="15dp"
         android:paddingRight="15dp"
-        android:text="领导班子年度考核"
         android:textColor="#009999"
         android:textSize="25sp" />
 
@@ -26,7 +25,6 @@
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
         android:paddingBottom="15dp"
-        android:text="完成进度 0/1"
         android:textColor="#ff00ff"
         android:textSize="18sp" />
 </RelativeLayout>

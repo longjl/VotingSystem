@@ -1,5 +1,7 @@
 package com.vs.activity;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
@@ -35,6 +37,9 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
     private EditText et_linshiDengluma;//临时登录码
     private Button btn_linshiDengluma;
     private Button btn_start_vote;//开始投票
+
+    private int pos = 0;
+
 
     private final ArrayList<Organization> mOrg = new ArrayList<Organization>();
     private ArrayAdapter<Organization> mAdapter;
@@ -108,6 +113,7 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
         public void handleMessage(Message msg) {
             switch (msg.what) {
                 case 0:
+                    btn_start_vote.setEnabled(false);
                     et_linshiDengluma.setText("");
                     break;
                 case 1://请求成功
@@ -135,13 +141,17 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
         VSClient.get(url, params, new JsonHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
-                 Log.e("JSONObject----", response.toString());
+                //Log.e("JSONObject----", response.toString());
                 if (response.optInt(Constant.STATUS) == 1) {
                     JSONObject object = response.optJSONObject(Constant.VO);
                     if (object == null) return;
+
                     app.temp.linshiDengluma = object.optString("linshiDengluma");
                     app.temp.voteMeetingId = object.optString("voteMeetingId");
                     et_linshiDengluma.setText(object.optString("linshiDengluma"));
+                    if (object.optString("linshiDengluma") != null) {
+                        btn_start_vote.setEnabled(true);
+                    }
                 } else {
                     Toast.makeText(LoginActivity.this, response.optString(Constant.TIPMESSAGE), Toast.LENGTH_SHORT).show();
                     app.temp.linshiDengluma = null;
@@ -168,6 +178,7 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
      */
     @Override
     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+        pos = position;
         Organization organization = mOrg.get(position);
         if (organization.medicalRegInfoId != null) {
             app.temp.medicalRegInfoId = organization.medicalRegInfoId;
@@ -191,49 +202,21 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
             }
             mobile_getLinshiDengluma();
         } else if (v.getId() == btn_start_vote.getId()) {
-            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-            startActivity(intent);
-            finish();
+            new AlertDialog.Builder(LoginActivity.this).setTitle("提示")
+                    .setIconAttribute(android.R.attr.alertDialogIcon)
+                    .setMessage("请确认您的单位是" + mOrg.get(pos).medicalName)
+                    .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                            startActivity(intent);
+                            finish();
+                        }
+                    })
+                    .setNegativeButton("取消", null)
+                    .create().show();
+
         }
     }
-
-
-
-    /*
-        RequestParams params = new RequestParams();
-        params.put(Constant.FROM_PARAM_KEY, Constant.FROM_PARAM_VALUE);
-        params.put(Constant.PAGE_NUM_KEY, pageNum);
-        params.put(Constant.TOKEN_KEY, LeapApplication.getInstance().getToken());
-        LeapRestClient.get(URLs.LEAP_COURSE_URL, params, new JsonHttpResponseHandler() {
-            @Override
-            public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
-                loadingGone();
-                stopAnim();
-                completeHandler.sendEmptyMessage(0);
-
-                if (response.optInt(Constant.CODE_KEY) != 200) return;
-
-                JSONObject data_json = response.optJSONObject(Constant.DATA_KEY);
-                if (data_json == null) return;
-
-                JSONArray records_json = data_json.optJSONArray(Constant.RECORDS_KEY);
-                if (records_json == null || records_json.length() == 0) {
-                    isRequest = false;//已经没有数据了
-                    return;
-                }
-                Message message = new Message();
-                message.obj = records_json;
-                mHandler.sendMessage(message);
-            }
-
-            @Override
-            public void onFailure(int statusCode, Header[] headers, Throwable throwable,
-                                  JSONObject errorResponse) {
-                stopAnim();
-                completeHandler.sendEmptyMessage(0);
-                showToast(R.string.network_exception);
-            }
-        });
-     */
-
 }

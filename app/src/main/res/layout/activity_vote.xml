@@ -21,7 +21,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:paddingLeft="10dp"
-                android:text="2014年演示医院1领导班子年度考核"
                 android:textColor="#009999"
                 android:textSize="26sp" />
         </LinearLayout>
@@ -49,7 +48,6 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:paddingLeft="10dp"
-                        android:text="测评要素"
                         android:textColor="#009999"
                         android:textSize="26sp" />
                 </LinearLayout>
@@ -100,7 +98,6 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:paddingLeft="10dp"
-                        android:text="内容"
                         android:textColor="#009999"
                         android:textSize="26sp" />
                 </LinearLayout>
@@ -141,7 +138,6 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:paddingLeft="10dp"
-                        android:text="投票选项"
                         android:textColor="#009999"
                         android:textSize="26sp" />
                 </LinearLayout>
@@ -172,7 +168,7 @@
                         android:id="@+id/layout_elementtype_2"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:visibility="gone">
+                        android:visibility="visible">
 
                         <RadioGroup
                             android:id="@+id/rg_vote"
@@ -185,10 +181,9 @@
                                 android:id="@+id/rb_a"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:background="@drawable/radiobutton_bg"
                                 android:text="A"
                                 android:textColor="#9a6700"
-                                android:textSize="22sp"
+                                android:textSize="28sp"
                                 android:visibility="gone" />
 
                             <RadioButton
@@ -196,10 +191,9 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginLeft="20dp"
-                                android:background="@drawable/radiobutton_bg"
                                 android:text="B"
                                 android:textColor="#9a6700"
-                                android:textSize="22sp"
+                                android:textSize="28sp"
                                 android:visibility="gone" />
 
                             <RadioButton
@@ -207,10 +201,9 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginLeft="20dp"
-                                android:background="@drawable/radiobutton_bg"
                                 android:text="C"
                                 android:textColor="#9a6700"
-                                android:textSize="22sp"
+                                android:textSize="28sp"
                                 android:visibility="gone" />
 
                             <RadioButton
@@ -218,10 +211,9 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginLeft="20dp"
-                                android:background="@drawable/radiobutton_bg"
                                 android:text="D"
                                 android:textColor="#9a6700"
-                                android:textSize="22sp"
+                                android:textSize="28sp"
                                 android:visibility="gone" />
 
                             <RadioButton
@@ -229,10 +221,9 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginLeft="20dp"
-                                android:background="@drawable/radiobutton_bg"
                                 android:text="E"
                                 android:textColor="#9a6700"
-                                android:textSize="22sp"
+                                android:textSize="28sp"
                                 android:visibility="gone" />
                         </RadioGroup>
                     </LinearLayout>
