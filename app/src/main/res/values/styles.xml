@@ -1,0 +1,22 @@
+<resources>
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="VSTheme">
+        <!-- Customize your theme here. -->
+    </style>
+
+
+    <style name="VSNoTitleBar" parent="VSTheme">
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+
+    <style name="VSGridView">
+        <item name="android:horizontalSpacing">20dp</item>
+        <item name="android:verticalSpacing">20dp</item>
+        <!--<item name="android:listSelector">@drawable/selectable_background_photup</item>-->
+        <item name="android:numColumns">auto_fit</item>
+        <item name="android:stretchMode">columnWidth</item>
+        <item name="android:layout_marginTop">0dp</item>
+    </style>
+</resources>

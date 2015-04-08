@@ -1,0 +1,43 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FCFCFC"
+    tools:context=".MainActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="20dp"
+        android:paddingLeft="50dp"
+        android:paddingRight="50dp">
+
+        <GridView
+            android:id="@+id/grid"
+            style="@style/VSGridView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:columnWidth="@dimen/gridview_item_dimension"
+            android:scrollbars="none" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:gravity="center"
+        android:paddingBottom="10dp">
+
+        <Button
+            android:id="@+id/btn_sure_vote"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/btn_bg"
+            android:minHeight="@dimen/view_min_height"
+            android:minWidth="400dip"
+            android:text="确认投票"
+            android:textColor="@android:color/white"
+            android:textSize="@dimen/text_size_22" />
+    </LinearLayout>
+</RelativeLayout>
