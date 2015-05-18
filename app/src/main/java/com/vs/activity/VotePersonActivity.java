@@ -1,10 +1,9 @@
 package com.vs.activity;
 
-import android.content.Intent;
+import android.app.ProgressDialog;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
@@ -51,6 +50,7 @@ public class VotePersonActivity extends BaseActivity implements AdapterView.OnIt
     private TextView tv_birthday;
     private TextView tv_renzhishijian;
     private TextView tv_yuanrenZhiwu;
+    private TextView personTitle;
 
     private TextView tv_titleFirst;
     private TextView tv_detailFirst;
@@ -59,7 +59,7 @@ public class VotePersonActivity extends BaseActivity implements AdapterView.OnIt
     private TextView tv_detailSecond;
     private TextView tv_titleVote;
 
-    private EditText et_extraResult;//输入框
+    private EditText et_text;//输入框
 
     private MyListView lv_vote;
     private RadioGroup rg_vote;
@@ -69,11 +69,15 @@ public class VotePersonActivity extends BaseActivity implements AdapterView.OnIt
     private RadioButton rb_d;   //选项D
     private RadioButton rb_e;   //选项E
 
+    private LinearLayout layout_report_name;//报表名称布局
+    private LinearLayout layout_first_title;//第一区域标题布局
+    private LinearLayout layout_first_content;//第一区域内容布局
+    private LinearLayout layout_second_title;//第二区域标题布局
+    private LinearLayout layout_second_content;//第二区域内容布局
+
     private LinearLayout layout_elementtype_1;//文本 elementType = 1  意见和建议
     private LinearLayout layout_elementtype_2;//单选框 elementType = 2
     private LinearLayout layout_reportType_3;//第3类报表
-    private LinearLayout layout_first;//区域1
-    private LinearLayout layout_second; //区域2
 
     private Button btn_next;//保存 或 下一步
 
@@ -95,26 +99,33 @@ public class VotePersonActivity extends BaseActivity implements AdapterView.OnIt
     private SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
 
     private static final int RESULT_CODE = 200;
-
+    private ProgressDialog dialogLoading;
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_vote_person);
-        getActionBar().setDisplayShowTitleEnabled(false);
-        getActionBar().setDisplayShowHomeEnabled(true);
-        getActionBar().setDisplayHomeAsUpEnabled(false);
-
+        app.activities.add(this);
         initView();
         getIntentData();
     }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        getActionBar().setDisplayShowTitleEnabled(false);
+        getActionBar().setDisplayShowHomeEnabled(true);
+        getActionBar().setDisplayHomeAsUpEnabled(false);
+    }
+
 
     /**
      * 初始化组件
      */
     private void initView() {
         tv_reportName = (TextView) findViewById(R.id.tv_reportName);
-        et_extraResult = (EditText) findViewById(R.id.et_extraResult);
+        et_text = (EditText) findViewById(R.id.et_text);
 
+        personTitle = (TextView) findViewById(R.id.personTitle);
         tv_name = (TextView) findViewById(R.id.tv_name);
         tv_xianrenzhiwu = (TextView) findViewById(R.id.tv_xianrenzhiwu);
         tv_sex = (TextView) findViewById(R.id.tv_sex);
@@ -136,14 +147,19 @@ public class VotePersonActivity extends BaseActivity implements AdapterView.OnIt
         rb_d = (RadioButton) findViewById(R.id.rb_d);
         rb_e = (RadioButton) findViewById(R.id.rb_e);
 
+        layout_report_name = (LinearLayout) findViewById(R.id.layout_report_name);
+        layout_first_title = (LinearLayout) findViewById(R.id.layout_first_title);
+        layout_first_content = (LinearLayout) findViewById(R.id.layout_first_content);
+        layout_second_title = (LinearLayout) findViewById(R.id.layout_second_title);
+        layout_second_content = (LinearLayout) findViewById(R.id.layout_second_content);
+
         layout_elementtype_1 = (LinearLayout) findViewById(R.id.layout_elementtype_1);
         layout_elementtype_2 = (LinearLayout) findViewById(R.id.layout_elementtype_2);
         layout_reportType_3 = (LinearLayout) findViewById(R.id.layout_reportType_3);
-        layout_first = (LinearLayout) findViewById(R.id.layout_first);
-        layout_second = (LinearLayout) findViewById(R.id.layout_second);
 
         btn_next = (Button) findViewById(R.id.btn_next);
     }
+
 
     /**
      * 获取参数信息
@@ -178,8 +194,76 @@ public class VotePersonActivity extends BaseActivity implements AdapterView.OnIt
         adapter = new VoteAdapter(this, list);
         lv_vote.setAdapter(adapter);
 
-        mobile_toVoteDetailPage(reportBaseId);
+        initHandler.sendEmptyMessage(0);
     }
+
+
+    private Handler initHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            if (msg.what == 0) {
+                mobile_toVoteDetailPage_local(reportBaseId);
+            }
+        }
+    };
+
+    private void mobile_toVoteDetailPage_local(final String reportBaseId) {
+        JSONObject response = app.loadJsonObject(reportBaseId);
+        if (response == null) {
+            Toast.makeText(VotePersonActivity.this, "没有数据", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (response.optInt(Constant.STATUS) == 1) {
+            if (null == reportBaseVO) reportBaseVO = new ReportBaseVO();
+            JSONObject object = response.optJSONObject(Constant.VO);
+            reportBaseVO.reportType = object.optInt("reportType");
+            reportBaseVO.reportSequence = object.optInt("reportSequence");
+            reportBaseVO.reportBaseId = object.optString("reportBaseId");
+            reportBaseVO.reportName = object.optString("reportName");
+            reportBaseVO.voteCount = object.optInt("voteCount");
+
+            JSONArray jsonArray = object.optJSONArray("reportDetailVOList");
+            if (jsonArray == null || jsonArray.length() == 0) return;
+
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject obj = jsonArray.optJSONObject(i);
+                ReportDetailVO reportDetailVO = new ReportDetailVO();
+                reportDetailVO.reportDetailId = obj.optString("reportDetailId");
+
+                reportDetailVO.titleFirst = obj.optString("titleFirst");
+                reportDetailVO.detailFirst = obj.optString("detailFirst");
+
+                reportDetailVO.titleSecond = obj.optString("titleSecond");
+                reportDetailVO.detailSecond = obj.optString("detailSecond");
+
+                reportDetailVO.elementType = obj.optInt("elementType");
+                reportDetailVO.extraResult = obj.optString("extraResult");
+                reportDetailVO.titleVote = obj.optString("titleVote");
+                reportDetailVO.personTitle = obj.optString("personTitle");
+
+                if (reportDetailVO.elementType == 2) {
+                    List<InputTemplateVO> inputTemplateVOList = new ArrayList<InputTemplateVO>();
+                    JSONArray input_json_arr = obj.optJSONArray("inputTemplateVOList");
+                    if (input_json_arr != null && input_json_arr.length() > 0) {
+                        for (int k = 0; k < input_json_arr.length(); k++) {
+                            JSONObject input_obj = input_json_arr.optJSONObject(k);
+                            InputTemplateVO inputTemplateVO = new InputTemplateVO();
+                            inputTemplateVO.inputCode = input_obj.optString("inputCode");
+                            inputTemplateVO.inputDisplay = input_obj.optString("inputDisplay");
+                            inputTemplateVO.inputSequence = input_obj.optInt("inputSequence");
+                            inputTemplateVOList.add(inputTemplateVO);
+                        }
+                        reportDetailVO.inputTemplateVOList = inputTemplateVOList;
+                    }
+                }
+                reportBaseVO.reportDetailVOList.add(reportDetailVO);
+            }
+            handler.sendEmptyMessage(1);
+        } else {
+            Toast.makeText(VotePersonActivity.this, response.optString(Constant.TIPMESSAGE), Toast.LENGTH_SHORT).show();
+        }
+    }
+
 
     /**
      * *************************************************************************
@@ -189,7 +273,7 @@ public class VotePersonActivity extends BaseActivity implements AdapterView.OnIt
      * @param reportBaseId
      */
     private void mobile_toVoteDetailPage(final String reportBaseId) {
-        String url = Constant.BASE_HTTP + "/tpms/mobile_toVoteDetailPage.mobile";
+        String url = Constant.BASE_HTTP + app.getServerUrlToPrefs() + "/tpms/mobile_toVoteDetailPage.mobile";
         RequestParams params = new RequestParams();
         params.put("linshiDengluma", app.temp.linshiDengluma);//临时登陆码
         params.put("medicalRegInfoId", app.temp.medicalRegInfoId);//执业机构主键
@@ -283,30 +367,51 @@ public class VotePersonActivity extends BaseActivity implements AdapterView.OnIt
     private void showReportDetail(final int currentPosition) {
         ReportDetailVO reportDetailVO = reportBaseVO.reportDetailVOList.get(currentPosition);
         switch (reportType) {
-            case 2://第2类报表
-                layout_second.setVisibility(View.VISIBLE);
-                layout_first.setVisibility(View.VISIBLE);
-                break;
             case 3://第3类报表
                 layout_reportType_3.setVisibility(View.VISIBLE);
-                layout_second.setVisibility(View.GONE);
-                layout_first.setVisibility(View.GONE);
 
-                tv_renzhishijian.setText(person.renzhishijian);
-                tv_birthday.setText(person.birthday);
-                tv_sex.setText(person.sex);
-                tv_yuanrenZhiwu.setText(person.yuanrenZhiwu);
+                tv_renzhishijian.setText(person.renzhishijian);  //任职时间
+                tv_birthday.setText(person.birthday);//生日
+                tv_sex.setText(person.sex);//性别
+                tv_yuanrenZhiwu.setText(person.yuanrenZhiwu);//原任职务
                 break;
             default:
                 break;
         }
-        tv_name.setText(person.name);
-        tv_xianrenzhiwu.setText(person.xianrenzhiwu);
+        tv_name.setText(person.name);   //姓名
+        tv_xianrenzhiwu.setText(person.xianrenzhiwu);//现任职务
 
-        tv_reportName.setText(reportBaseVO.reportName);
-        tv_titleFirst.setText(reportDetailVO.titleFirst);
-        tv_detailFirst.setText(reportDetailVO.detailFirst);
-        tv_titleVote.setText(reportDetailVO.titleVote);
+        //显示报表名称
+        if (reportBaseVO != null && reportBaseVO.reportName != null) {
+            layout_report_name.setVisibility(View.VISIBLE);
+            tv_reportName.setText(reportBaseVO.reportName);
+        }
+
+        //显示第一区域标题
+        if (reportDetailVO.titleFirst != null && reportDetailVO.titleFirst.length() > 0) {
+            layout_first_title.setVisibility(View.VISIBLE);
+            tv_titleFirst.setText(reportDetailVO.titleFirst);
+        }
+
+        //显示第一区域内容
+        if (reportDetailVO.detailFirst != null && reportDetailVO.detailFirst.length() > 0) {
+            layout_first_content.setVisibility(View.VISIBLE);
+            tv_detailFirst.setText(reportDetailVO.detailFirst);
+        }
+
+        //显示第二区域标题
+        if (reportDetailVO.titleSecond != null && reportDetailVO.titleSecond.length() > 0) {
+            layout_second_title.setVisibility(View.VISIBLE);
+            tv_titleSecond.setText(reportDetailVO.titleSecond);
+        }
+        //显示第二区域内容
+        if (reportDetailVO.detailSecond != null && reportDetailVO.detailSecond.length() > 0) {
+            layout_second_content.setVisibility(View.VISIBLE);
+            tv_detailSecond.setText(reportDetailVO.detailSecond);
+        }
+
+        personTitle.setText(reportDetailVO.personTitle);        //人员信息标题
+        tv_titleVote.setText(reportDetailVO.titleVote);         //投票选项
 
         switch (reportDetailVO.elementType) {
             case 1://文本
@@ -316,27 +421,29 @@ public class VotePersonActivity extends BaseActivity implements AdapterView.OnIt
             case 2://单选框
                 layout_elementtype_1.setVisibility(View.GONE);
                 layout_elementtype_2.setVisibility(View.VISIBLE);
-                tv_titleSecond.setText(reportDetailVO.titleSecond);
-                tv_detailSecond.setText(reportDetailVO.detailSecond);
-
                 generateRadioButton(reportDetailVO.inputTemplateVOList);
                 isCheckChoose(reportDetailVO);
                 break;
         }
-
+        //如果已经是最后一项
         if (reportBaseVO.reportDetailVOList.size() == (currentPosition + 1)) { //处理 SHOW_ALL
             btn_next.setText("保存");
+            isChecked = true;
             if (reportDetailVO.detailFirst.equals("SHOW_ALL")) {
-                layout_second.setVisibility(View.GONE);
                 tv_detailFirst.setVisibility(View.GONE);
                 lv_vote.setVisibility(View.VISIBLE);
 
                 list.clear();
                 list.addAll(dao.findReportResults(reportResult, reportBaseVO.reportDetailVOList.size() - 1));
                 adapter.notifyDataSetChanged();
-            } else {
-                tv_detailFirst.setVisibility(View.VISIBLE);
-                lv_vote.setVisibility(View.GONE);
+            }
+
+            if (reportDetailVO.elementType == 1) {//文本框
+                reportResult.reportDetailId = reportDetailVO.reportDetailId;
+                ReportResult result = dao.findReportResult(reportResult);
+                if (result != null && result.reportResult != null) {
+                    et_text.setText(result.reportResult);
+                }
             }
         }
     }
@@ -418,7 +525,11 @@ public class VotePersonActivity extends BaseActivity implements AdapterView.OnIt
 
     @Override
     public void onCheckedChanged(RadioGroup group, int checkedId) {
-        isChecked = true;
+        if (checkedId != -1) {
+            isChecked = true;
+        } else {
+            isChecked = false;
+        }
     }
 
     /**
@@ -456,12 +567,15 @@ public class VotePersonActivity extends BaseActivity implements AdapterView.OnIt
         if (null == inputTemplateVO) return;
 
         reportResult.radioId = radioId;
-        reportResult.reportResult = inputTemplateVO.inputCode;
         reportResult.inputDisplay = inputTemplateVO.inputDisplay;
         reportResult.detailFirst = reportDetailVO.detailFirst;
         reportResult.lingdaoGanbuId = person.lingdaoGanbuId;
         reportResult.createDate = format.format(new Date());
-
+        if (reportDetailVO.elementType == 1) {//文本
+            reportResult.reportResult = et_text.getText().toString();
+        } else if (reportDetailVO.elementType == 2) {//单选框
+            reportResult.reportResult = inputTemplateVO.inputCode;
+        }
         dao.updateOrSaveReportResult(reportResult);
         isChecked = false;
     }
@@ -488,11 +602,20 @@ public class VotePersonActivity extends BaseActivity implements AdapterView.OnIt
                 mCurrentPosition += 1;
                 showReportDetail(mCurrentPosition);
             } else {
-                updateOrSaveRadio(rg_vote.getCheckedRadioButtonId());//下一步之前保存上一次的选择记录
+                ReportDetailVO reportDetailVO = reportBaseVO.reportDetailVOList.get(mCurrentPosition);
+                switch (reportDetailVO.elementType) {
+                    case 1://文本
+                        reportResult.reportResult = et_text.getText().toString();
+                        dao.updateOrSaveReportResult(reportResult);
+                        break;
+                    case 2://单选框
+                        updateOrSaveRadio(rg_vote.getCheckedRadioButtonId());//下一步之前保存上一次的选择记录
+                        break;
+                }
                 mobile_save();
             }
         } else {
-            Toast.makeText(VotePersonActivity.this, "你还未投票", Toast.LENGTH_SHORT).show();
+            Toast.makeText(VotePersonActivity.this, "请选择投票选项", Toast.LENGTH_SHORT).show();
             return;
         }
     }
@@ -501,6 +624,12 @@ public class VotePersonActivity extends BaseActivity implements AdapterView.OnIt
      * 保存数据
      */
     private void mobile_save() {
+        dialogLoading = ProgressDialog.show(VotePersonActivity.this, "", "数据正在上传中. 请稍等...", true, false);
+        if (!app.isNetworkConnected(this)) {//网络不可用
+            dialogLoading.dismiss();
+            back();
+            return;
+        }
         reportResultList = dao.findAll(reportResult);
         if (reportResultList == null || reportResultList.size() == 0) {
             Toast.makeText(this, "您还未完成投票", Toast.LENGTH_SHORT).show();
@@ -515,34 +644,47 @@ public class VotePersonActivity extends BaseActivity implements AdapterView.OnIt
             map.put("reportResultList[" + index + "].reportDetailId", result.reportDetailId);
             map.put("reportResultList[" + index + "].reportResult", result.reportResult);
             map.put("reportResultList[" + index + "].lingdaoGanbuId", person.lingdaoGanbuId);
-            map.put("reportResultList[" + index + "].extraResult", et_extraResult.getText().toString());
-
             index++;
         }
         RequestParams params = new RequestParams(map);
         params.put("voteMeetingId", app.temp.voteMeetingId);
         params.put("medicalRegInfoId", app.temp.medicalRegInfoId);
+        params.put("macAddress", app.macAddress);
 
-        String url = Constant.BASE_HTTP + "/tpms/mobile_save.mobile";
+        String url = Constant.BASE_HTTP + app.getServerUrlToPrefs() + "/tpms/mobile_save.mobile";
         VSClient.post(url, params, new JsonHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
                 if (response.optInt(Constant.STATUS) == 1) {
-                    if (dao.queryPersonProgress(app.temp.medicalRegInfoId, app.temp.linshiDengluma, reportResult.reportBaseId, app.temp.voteMeetingId, person.lingdaoGanbuId) == 0) {
-                        dao.savePersonProgress(app.temp.medicalRegInfoId, app.temp.linshiDengluma, reportResult.reportBaseId, app.temp.voteMeetingId, person.lingdaoGanbuId);
-                    }
-                    Toast.makeText(VotePersonActivity.this, "投票保存成功", Toast.LENGTH_SHORT).show();
-                    setResult(RESULT_CODE);
-                    finish();
-                } else {
-                    Toast.makeText(VotePersonActivity.this, response.optString(Constant.TIPMESSAGE), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(VotePersonActivity.this, "投票数据已保存", Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse) {
-                Toast.makeText(VotePersonActivity.this, R.string.exception_prompt, Toast.LENGTH_SHORT).show();
+
+            }
+
+            @Override
+            public void onFinish() {
+                if (dialogLoading != null && dialogLoading.isShowing()) {
+                    dialogLoading.dismiss();
+                }
+                if (dao.queryPersonProgress(app.temp.medicalRegInfoId, app.temp.linshiDengluma, reportResult.reportBaseId, app.temp.voteMeetingId, person.lingdaoGanbuId) == 0) {
+                    dao.updateProgress(app.temp.medicalRegInfoId, app.temp.linshiDengluma, reportResult.reportBaseId, app.temp.voteMeetingId);
+                    dao.savePersonProgress(app.temp.medicalRegInfoId, app.temp.linshiDengluma, reportResult.reportBaseId, app.temp.voteMeetingId, person.lingdaoGanbuId);
+                }
+                back();
             }
         });
     }
+
+    /**
+     * 返回
+     */
+    private void back() {
+        setResult(RESULT_CODE);
+        finish();
+    }
+
 }

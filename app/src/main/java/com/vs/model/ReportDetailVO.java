@@ -20,5 +20,6 @@ public class ReportDetailVO {
 
     public String extraResult;//当输入项为带有扩展的多选框时，此字段用于保存补充的信息，即手动输入内容
 
+    public String personTitle;//干部信息
     public List<InputTemplateVO> inputTemplateVOList;//投票项内容,只有当elementType=2时使用
 }

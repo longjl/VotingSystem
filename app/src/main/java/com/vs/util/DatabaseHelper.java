@@ -3,7 +3,6 @@ package com.vs.util;
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.util.Log;
 
 /**
  * SQLiteOpenHelper是一个辅助类，用来管理数据库的创建和版本他，它提供两个方面的功能
@@ -79,6 +78,15 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         person_progress.append("voteMeetingId text,");//投票会议主键
         person_progress.append("lingdaoGanbuId text)");//人员主键，若reportType为1或4时为空
         db.execSQL(person_progress.toString());
+
+        //报表表
+        /*StringBuffer report = new StringBuffer("create table if not exists report(");
+        report.append("_id INTEGER PRIMARY KEY,");//主键
+        report.append("reportType int,");//投票报表类型 1、针对组织机构评价  2、针对领导干部评价  3、针对新选拔干部评价 4、第四类报表
+        report.append("reportBaseId text,");//报表id
+        report.append("reportName text,");//报表名字
+        report.append("voteCount int)");//报表选项数量
+        db.execSQL(report.toString());*/
     }
 
     @Override

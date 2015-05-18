@@ -2,4 +2,22 @@
 <resources>
     <color name="rb_text_color">#9a6700</color>
     <color name="text_color">#0333ff</color>
+    <color name="activity_bg">#00b395</color>
+
+
+    <color name="upload_color_default">#9559b3</color>
+    <color name="upload_color_pressed">#b679d5</color>
+
+    <color name="update_color_default">#296dcc</color>
+    <color name="update_color_pressed">#548ede</color>
+
+
+    <color name="setting_color_default">#b3243b</color>
+    <color name="setting_color_pressed">#c9324a</color>
+
+    <color name="start_vote_color_default">#e9744d</color>
+    <color name="start_vote_color_pressed">#cc5229</color>
+
+
+
 </resources>

@@ -11,6 +11,7 @@
         android:orientation="vertical">
 
         <LinearLayout
+            android:id="@+id/layout_report_name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
@@ -22,9 +23,10 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:paddingLeft="10dp"
-                android:text="报表名字"
                 android:textColor="#009999"
-                android:textSize="26sp" />
+                android:textSize="26sp"
+                android:text="报表名称"
+                />
         </LinearLayout>
 
         <LinearLayout
@@ -46,11 +48,14 @@
                     android:orientation="horizontal">
 
                     <TextView
+                        android:id="@+id/personTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:paddingLeft="10dp"
                         android:textColor="#009999"
-                        android:textSize="26sp" />
+                        android:textSize="26sp"
+                        android:text="人员信息"
+                        />
                 </LinearLayout>
 
                 <LinearLayout
@@ -230,19 +235,21 @@
 
             <!-- 测评选项 start -->
             <LinearLayout
-                android:id="@+id/layout_first"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:visibility="visible">
 
                 <LinearLayout
+                    android:id="@+id/layout_first_title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:background="@drawable/item_bg"
                     android:gravity="center_vertical"
                     android:minHeight="@dimen/view_min_height"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:visibility="gone"
+                    >
 
                     <TextView
                         android:id="@+id/tv_titleFirst"
@@ -250,16 +257,21 @@
                         android:layout_height="wrap_content"
                         android:paddingLeft="10dp"
                         android:textColor="#009999"
-                        android:textSize="26sp" />
+                        android:textSize="26sp"
+                        android:text="第一区域标题"
+                        />
                 </LinearLayout>
 
                 <LinearLayout
+                    android:id="@+id/layout_first_content"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center"
                     android:orientation="vertical"
                     android:paddingBottom="20dp"
-                    android:paddingTop="20dp">
+                    android:paddingTop="20dp"
+                    android:visibility="gone"
+                    >
 
                     <TextView
                         android:id="@+id/tv_detailFirst"
@@ -267,7 +279,9 @@
                         android:layout_height="wrap_content"
                         android:paddingLeft="10dp"
                         android:textColor="#9a6700"
-                        android:textSize="30sp" />
+                        android:textSize="30sp"
+                        android:text="第一区域内容"
+                        />
 
                     <com.vs.views.MyListView
                         android:id="@+id/lv_vote"
@@ -280,19 +294,21 @@
 
             <!-- 测评选项 start -->
             <LinearLayout
-                android:id="@+id/layout_second"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:visibility="visible">
 
                 <LinearLayout
+                    android:id="@+id/layout_second_title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:background="@drawable/item_bg"
                     android:gravity="center_vertical"
                     android:minHeight="@dimen/view_min_height"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:visibility="gone"
+                    >
 
                     <TextView
                         android:id="@+id/tv_titleSecond"
@@ -300,15 +316,20 @@
                         android:layout_height="wrap_content"
                         android:paddingLeft="10dp"
                         android:textColor="#009999"
-                        android:textSize="26sp" />
+                        android:textSize="26sp"
+                        android:text="第二区域标题"
+                        />
                 </LinearLayout>
 
                 <LinearLayout
+                    android:id="@+id/layout_second_content"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center_vertical"
                     android:paddingBottom="20dp"
-                    android:paddingTop="20dp">
+                    android:paddingTop="20dp"
+                    android:visibility="gone"
+                    >
 
                     <TextView
                         android:id="@+id/tv_detailSecond"
@@ -316,7 +337,9 @@
                         android:layout_height="wrap_content"
                         android:paddingLeft="10dp"
                         android:textColor="@android:color/black"
-                        android:textSize="24sp" />
+                        android:textSize="24sp"
+                        android:text="第二区域内容"
+                        />
                 </LinearLayout>
             </LinearLayout>
             <!-- 测评选项 end -->
@@ -332,7 +355,8 @@
                     android:background="@drawable/item_bg"
                     android:gravity="center_vertical"
                     android:minHeight="@dimen/view_min_height"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    >
 
                     <TextView
                         android:id="@+id/tv_titleVote"
@@ -340,7 +364,9 @@
                         android:layout_height="wrap_content"
                         android:paddingLeft="10dp"
                         android:textColor="#009999"
-                        android:textSize="26sp" />
+                        android:textSize="26sp"
+                        android:text="投票选项"
+                        />
                 </LinearLayout>
 
                 <LinearLayout
@@ -357,7 +383,7 @@
                         android:visibility="gone">
 
                         <EditText
-                            android:id="@+id/et_extraResult"
+                            android:id="@+id/et_text"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:hint="意见和建议"

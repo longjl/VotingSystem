@@ -1,19 +1,16 @@
 package com.vs.activity;
 
-import android.content.Intent;
+import android.app.ProgressDialog;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.Menu;
+import android.view.KeyEvent;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ListView;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
@@ -36,7 +33,6 @@ import org.apache.http.Header;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.security.acl.Group;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -54,7 +50,7 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
     private TextView tv_titleSecond;
     private TextView tv_detailSecond;
     private TextView tv_titleVote;
-    private EditText et_extraResult;//输入框
+    private EditText et_text;//输入框
 
     private Button btn_next;//下一步  , 保存
 
@@ -65,13 +61,16 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
     private RadioButton rb_d;   //选项D
     private RadioButton rb_e;   //选项E
 
-    private LinearLayout layout_second; //区域2布局
-    private LinearLayout layout_elementtype_1;//文本
-    private LinearLayout layout_elementtype_2;//单选框
+    private LinearLayout layout_report_name;//报表名称布局
+    private LinearLayout layout_first_title;//第一区域标题布局
+    private LinearLayout layout_first_content;//第一区域内容布局
+    private LinearLayout layout_second_title;//第二区域标题布局
+    private LinearLayout layout_second_content;//第二区域内容布局
 
+    private LinearLayout layout_elementtype_1;//文本布局
+    private LinearLayout layout_elementtype_2;//单选框布局
 
     private MyListView lv_vote;   //显示全部投票
-
     private RadioButton[] radios;
 
     private ReportBaseVO reportBaseVO;
@@ -83,16 +82,16 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
     private VoteAdapter adapter;
     private ArrayList<ReportResult> list = new ArrayList<ReportResult>();
     private List<ReportResult> reportResultList = new ArrayList<ReportResult>();//上传投票数据
+    private static final int RESULT_CODE = 200;
+
+    private ProgressDialog dialogLoading;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_vote);
-
-        getActionBar().setDisplayShowTitleEnabled(false);
-        getActionBar().setDisplayShowHomeEnabled(true);
-        getActionBar().setDisplayHomeAsUpEnabled(false);
+        app.activities.add(this);
         dao = new ReportDao(this);
         rg_vote = (RadioGroup) findViewById(R.id.rg_vote);
         rg_vote.setOnCheckedChangeListener(this);
@@ -107,10 +106,15 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
         btn_next = (Button) findViewById(R.id.btn_next);
         btn_next.setOnClickListener(this);
 
-        layout_second = (LinearLayout) findViewById(R.id.layout_second);
+        layout_report_name = (LinearLayout) findViewById(R.id.layout_report_name);
+        layout_first_title = (LinearLayout) findViewById(R.id.layout_first_title);
+        layout_first_content = (LinearLayout) findViewById(R.id.layout_first_content);
+        layout_second_title = (LinearLayout) findViewById(R.id.layout_second_title);
+        layout_second_content = (LinearLayout) findViewById(R.id.layout_second_content);
+
         layout_elementtype_1 = (LinearLayout) findViewById(R.id.layout_elementtype_1);
         layout_elementtype_2 = (LinearLayout) findViewById(R.id.layout_elementtype_2);
-        et_extraResult = (EditText) findViewById(R.id.et_extraResult);
+        et_text = (EditText) findViewById(R.id.et_text);
 
         lv_vote = (MyListView) findViewById(R.id.lv_vote);
         lv_vote.setOnItemClickListener(this);
@@ -126,8 +130,15 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
 
         tv_titleVote = (TextView) findViewById(R.id.tv_titleVote);
 
-        initData(getIntent().getStringExtra("reportBaseId"));
-        mobile_toVoteDetailPage(getIntent().getStringExtra("reportBaseId"));
+        initHandler.sendEmptyMessage(0);
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        getActionBar().setDisplayShowTitleEnabled(false);
+        getActionBar().setDisplayShowHomeEnabled(true);
+        getActionBar().setDisplayHomeAsUpEnabled(false);
     }
 
     private void initData(String reportBaseId) {
@@ -139,13 +150,85 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
         reportResult.medicalRegInfoId = app.temp.medicalRegInfoId;
     }
 
+    private Handler initHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            if (msg.what == 0) {
+                initData(getIntent().getStringExtra("reportBaseId"));
+                mobile_toVoteDetailPage_local(getIntent().getStringExtra("reportBaseId"));
+            }
+        }
+    };
+
+
+    /**
+     * 加载本地数据
+     *
+     * @param reportBaseId
+     */
+    private void mobile_toVoteDetailPage_local(final String reportBaseId) {
+        JSONObject response = app.loadJsonObject(reportBaseId);
+        if (response == null) {
+            Toast.makeText(VoteActivity.this, "没有投票选项数据", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (response.optInt(Constant.STATUS) == 1) {
+            if (null == reportBaseVO) reportBaseVO = new ReportBaseVO();
+
+            JSONObject object = response.optJSONObject(Constant.VO);
+            reportBaseVO.reportType = object.optInt("reportType");
+            reportBaseVO.reportSequence = object.optInt("reportSequence");
+            reportBaseVO.reportBaseId = object.optString("reportBaseId");
+            reportBaseVO.reportName = object.optString("reportName");
+            reportBaseVO.voteCount = object.optInt("voteCount");
+
+            JSONArray jsonArray = object.optJSONArray("reportDetailVOList");
+            if (jsonArray == null || jsonArray.length() == 0) return;
+
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject obj = jsonArray.optJSONObject(i);
+                ReportDetailVO reportDetailVO = new ReportDetailVO();
+                reportDetailVO.reportDetailId = obj.optString("reportDetailId");
+
+                reportDetailVO.titleFirst = obj.optString("titleFirst");
+                reportDetailVO.detailFirst = obj.optString("detailFirst");
+
+                reportDetailVO.titleSecond = obj.optString("titleSecond");
+                reportDetailVO.detailSecond = obj.optString("detailSecond");
+
+                reportDetailVO.elementType = obj.optInt("elementType");
+                reportDetailVO.extraResult = obj.optString("extraResult");
+                reportDetailVO.titleVote = obj.optString("titleVote");
+
+                if (reportDetailVO.elementType == 2) {
+                    List<InputTemplateVO> inputTemplateVOList = new ArrayList<InputTemplateVO>();
+                    JSONArray input_json_arr = obj.optJSONArray("inputTemplateVOList");
+                    if (input_json_arr != null && input_json_arr.length() > 0) {
+                        for (int k = 0; k < input_json_arr.length(); k++) {
+                            JSONObject input_obj = input_json_arr.optJSONObject(k);
+                            InputTemplateVO inputTemplateVO = new InputTemplateVO();
+                            inputTemplateVO.inputCode = input_obj.optString("inputCode");
+                            inputTemplateVO.inputDisplay = input_obj.optString("inputDisplay");
+                            inputTemplateVO.inputSequence = input_obj.optInt("inputSequence");
+                            inputTemplateVOList.add(inputTemplateVO);
+                        }
+                        reportDetailVO.inputTemplateVOList = inputTemplateVOList;
+                    }
+                }
+                reportBaseVO.reportDetailVOList.add(reportDetailVO);
+            }
+            handler.sendEmptyMessage(1);
+        }
+
+    }
+
     /**
      * 投票接口
      *
      * @param reportBaseId
      */
     private void mobile_toVoteDetailPage(final String reportBaseId) {
-        String url = Constant.BASE_HTTP + "/tpms/mobile_toVoteDetailPage.mobile";
+        String url = Constant.BASE_HTTP + app.getServerUrlToPrefs() + "/tpms/mobile_toVoteDetailPage.mobile";
         RequestParams params = new RequestParams();
         params.put("linshiDengluma", app.temp.linshiDengluma);//临时登陆码
         params.put("medicalRegInfoId", app.temp.medicalRegInfoId);//执业机构主键
@@ -155,7 +238,6 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
         VSClient.get(url, params, new JsonHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
-                //Log.e("mobile_toVoteDetailPage======", response.toString());
                 if (response.optInt(Constant.STATUS) == 1) {
                     if (null == reportBaseVO) reportBaseVO = new ReportBaseVO();
                     JSONObject object = response.optJSONObject(Constant.VO);
@@ -252,7 +334,7 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
                 ReportDetailVO reportDetailVO = reportBaseVO.reportDetailVOList.get(mCurrentPosition);
                 switch (reportDetailVO.elementType) {
                     case 1://文本
-                        reportResult.extraResult = et_extraResult.getText().toString();
+                        reportResult.reportResult = et_text.getText().toString();
                         dao.updateOrSaveReportResult(reportResult);
                         break;
                     case 2://单选框
@@ -262,15 +344,22 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
                 mobile_save();
             }
         } else {
-            Toast.makeText(VoteActivity.this, "你还未投票", Toast.LENGTH_SHORT).show();
+            Toast.makeText(VoteActivity.this, "请选择投票选项", Toast.LENGTH_SHORT).show();
             return;
         }
     }
+
 
     /**
      * 保存数据
      */
     private void mobile_save() {
+        dialogLoading = ProgressDialog.show(VoteActivity.this, "", "数据正在上传中. 请稍等...", true, false);
+        if (!app.isNetworkConnected(this)) {//网络不可用
+            dialogLoading.dismiss();
+            back();
+            return;
+        }
         reportResultList = dao.findAll(reportResult);
         if (reportResultList == null || reportResultList.size() == 0) {
             Toast.makeText(this, "您还未完成投票", Toast.LENGTH_SHORT).show();
@@ -285,32 +374,34 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
             map.put("reportResultList[" + index + "].pingjiarenLinshiDengluma", result.pingjiarenLinshiDengluma);
             map.put("reportResultList[" + index + "].reportDetailId", result.reportDetailId);
             map.put("reportResultList[" + index + "].reportResult", result.reportResult);
-            map.put("reportResultList[" + index + "].extraResult", et_extraResult.getText().toString());
             index++;
         }
         RequestParams params = new RequestParams(map);
         params.put("voteMeetingId", app.temp.voteMeetingId);
         params.put("medicalRegInfoId", app.temp.medicalRegInfoId);
+        params.put("macAddress", app.macAddress);
 
-        String url = Constant.BASE_HTTP + "/tpms/mobile_save.mobile";
+        String url = Constant.BASE_HTTP + app.getServerUrlToPrefs() + "/tpms/mobile_save.mobile";
         VSClient.post(url, params, new JsonHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
                 if (response.optInt(Constant.STATUS) == 1) {
-                    dao.updateProgress(app.temp.medicalRegInfoId, app.temp.linshiDengluma, reportResult.reportBaseId, app.temp.voteMeetingId);
-
-                    Toast.makeText(VoteActivity.this, "投票保存成功", Toast.LENGTH_SHORT).show();
-                    Intent intent = new Intent(VoteActivity.this, MainActivity.class);
-                    startActivity(intent);
-                    finish();
-                } else {
-                    Toast.makeText(VoteActivity.this, response.optString(Constant.TIPMESSAGE), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(VoteActivity.this, "投票数据已保存", Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse) {
-                Toast.makeText(VoteActivity.this, R.string.exception_prompt, Toast.LENGTH_SHORT).show();
+
+            }
+
+            @Override
+            public void onFinish() {
+                if (dialogLoading != null && dialogLoading.isShowing()) {
+                    dialogLoading.dismiss();
+                }
+                dao.updateProgress(app.temp.medicalRegInfoId, app.temp.linshiDengluma, reportResult.reportBaseId, app.temp.voteMeetingId);
+                back();
             }
         });
     }
@@ -321,53 +412,72 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
      * @param position
      */
     private void showReportDetail(final int position) {
-        tv_reportName.setText(reportBaseVO.reportName);
+        //显示报表名称
+        if (reportBaseVO != null && reportBaseVO.reportName != null) {
+            layout_report_name.setVisibility(View.VISIBLE);
+            tv_reportName.setText(reportBaseVO.reportName);
+        }
 
         ReportDetailVO reportDetailVO = reportBaseVO.reportDetailVOList.get(position);
-        tv_titleFirst.setText(reportDetailVO.titleFirst);
-        tv_detailFirst.setText(reportDetailVO.detailFirst);
 
+        //显示第一区域标题
+        if (reportDetailVO.titleFirst != null && reportDetailVO.titleFirst.length() > 0) {
+            layout_first_title.setVisibility(View.VISIBLE);
+            tv_titleFirst.setText(reportDetailVO.titleFirst);
+        }
+
+        //显示第一区域内容
+        if (reportDetailVO.detailFirst != null && reportDetailVO.detailFirst.length() > 0) {
+            layout_first_content.setVisibility(View.VISIBLE);
+            tv_detailFirst.setText(reportDetailVO.detailFirst);
+        }
+
+        //显示第二区域标题
+        if (reportDetailVO.titleSecond != null && reportDetailVO.titleSecond.length() > 0) {
+            layout_second_title.setVisibility(View.VISIBLE);
+            tv_titleSecond.setText(reportDetailVO.titleSecond);
+        }
+        //显示第二区域内容
+        if (reportDetailVO.detailSecond != null && reportDetailVO.detailSecond.length() > 0) {
+            layout_second_content.setVisibility(View.VISIBLE);
+            tv_detailSecond.setText(reportDetailVO.detailSecond);
+        }
+        //显示投票选项
+        tv_titleVote.setText(reportDetailVO.titleVote);
+
+        //判断是单选框,文本框
         switch (reportDetailVO.elementType) {
             case 1://文本
-                layout_second.setVisibility(View.GONE);
                 layout_elementtype_1.setVisibility(View.VISIBLE);
                 layout_elementtype_2.setVisibility(View.GONE);
                 break;
             case 2://单选框
-                if (reportDetailVO.titleSecond == null || reportDetailVO.titleSecond.length() == 0) {
-                    layout_second.setVisibility(View.GONE);
-                } else {
-                    layout_second.setVisibility(View.VISIBLE);
-                }
                 layout_elementtype_1.setVisibility(View.GONE);
                 layout_elementtype_2.setVisibility(View.VISIBLE);
-                tv_titleSecond.setText(reportDetailVO.titleSecond);
-                tv_detailSecond.setText(reportDetailVO.detailSecond);
-
                 generateRadioButton(reportDetailVO.inputTemplateVOList);
                 isCheckChoose(reportDetailVO);
                 break;
         }
 
-        tv_titleVote.setText(reportDetailVO.titleVote);
+        //如果已经是最后一项
         if (reportBaseVO.reportDetailVOList.size() == (position + 1)) { //处理 SHOW_ALL
             isChecked = true;
-            btn_next.setText("保 存");
+            btn_next.setText("保存");
+
             if (reportDetailVO.detailFirst.equals("SHOW_ALL")) {
                 tv_detailFirst.setVisibility(View.GONE);
                 lv_vote.setVisibility(View.VISIBLE);
                 list.clear();
                 list.addAll(dao.findReportResults(reportResult, reportBaseVO.reportDetailVOList.size() - 1));
                 adapter.notifyDataSetChanged();
-            } else {
-                tv_detailFirst.setVisibility(View.VISIBLE);
-                lv_vote.setVisibility(View.GONE);
             }
 
-            reportResult.reportDetailId = reportDetailVO.reportDetailId;
-            ReportResult result = dao.findReportResult(reportResult);
-            if (result != null && result.extraResult != null) {
-                et_extraResult.setText(result.extraResult);
+            if (reportDetailVO.elementType == 1) {//文本框
+                reportResult.reportDetailId = reportDetailVO.reportDetailId;
+                ReportResult result = dao.findReportResult(reportResult);
+                if (result != null && result.reportResult != null) {
+                    et_text.setText(result.reportResult);
+                }
             }
         }
     }
@@ -407,8 +517,8 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
     private void isCheckChoose(ReportDetailVO reportDetailVO) {
         reportResult.reportDetailId = reportDetailVO.reportDetailId;
         ReportResult result = dao.findReportResult(reportResult);
-        if (null == result.reportResult) return;
 
+        if (null == result.reportResult) return;
         switch (result.radioId) {
             case R.id.rb_a:
                 rb_a.setChecked(true);
@@ -432,7 +542,11 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
 
     @Override
     public void onCheckedChanged(RadioGroup group, int checkedId) {
-        isChecked = true;
+        if (checkedId != -1) {
+            isChecked = true;
+        } else {
+            isChecked = false;
+        }
     }
 
     /**
@@ -470,13 +584,13 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
         if (null == inputTemplateVO) return;
 
         reportResult.radioId = radioId;
-        reportResult.reportResult = inputTemplateVO.inputCode;
         reportResult.inputDisplay = inputTemplateVO.inputDisplay;
         reportResult.detailFirst = reportDetailVO.detailFirst;
         reportResult.createDate = format.format(new Date());
-        //保存输入的内容
-        if (et_extraResult.getText() != null && et_extraResult.getText().toString().length() > 0) {
-            reportResult.extraResult = et_extraResult.getText().toString();
+        if (reportDetailVO.elementType == 1) {//文本
+            reportResult.reportResult = et_text.getText().toString();
+        } else if (reportDetailVO.elementType == 2) {//单选框
+            reportResult.reportResult = inputTemplateVO.inputCode;
         }
         dao.updateOrSaveReportResult(reportResult);
         isChecked = false;
@@ -507,5 +621,24 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
             return true;*/
         }
         return super.onOptionsItemSelected(item);
+    }
+
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            // 监控返回键
+            back();
+            return false;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    /**
+     * 返回
+     */
+    private void back() {
+        setResult(RESULT_CODE);
+        finish();
     }
 }

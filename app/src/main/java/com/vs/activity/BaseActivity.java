@@ -18,6 +18,7 @@ public class BaseActivity extends Activity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         app = VSApplication.getApplication(this);
+        app.activities.add(this);
     }
 
 }

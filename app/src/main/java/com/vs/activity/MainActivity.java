@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -31,6 +30,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.List;
 
 
 public class MainActivity extends BaseActivity implements AdapterView.OnItemClickListener, AdapterView.OnClickListener {
@@ -39,16 +39,12 @@ public class MainActivity extends BaseActivity implements AdapterView.OnItemClic
     private ArrayList<ReportBaseVO> reports = new ArrayList<ReportBaseVO>();
     private ReportDao dao;
     private Button btn_sure_vote;
+    private static final int REQUEST_CODE = 200;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        getActionBar().setDisplayShowTitleEnabled(false);
-        getActionBar().setDisplayHomeAsUpEnabled(false);
-        getActionBar().setDisplayShowHomeEnabled(true);
-
         gridView = (GridView) findViewById(R.id.grid);
         gridView.setOnItemClickListener(this);
 
@@ -57,7 +53,47 @@ public class MainActivity extends BaseActivity implements AdapterView.OnItemClic
         dao = new ReportDao(this);
         reportAdapter = new ReportAdapter(this, reports);
         gridView.setAdapter(reportAdapter);
-        mobile_showAllReport();
+
+        app.setLinshiDenglumaToPrefs(app.temp.linshiDengluma);
+        mobile_showAllReport_local();
+    }
+
+    /**
+     * 读取本地数据
+     */
+    private void mobile_showAllReport_local() {
+        JSONObject response = app.loadJsonObject(app.temp.linshiDengluma);
+        if (response == null) {
+            Toast.makeText(MainActivity.this, "数据加载失败,请重新加载数据", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (response.optInt(Constant.STATUS) == 1) {
+            reports.clear();
+            JSONArray jsonArray = response.optJSONArray(Constant.VO);
+            if (jsonArray == null || jsonArray.length() == 0) return;
+
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject object = jsonArray.optJSONObject(i);
+                ReportBaseVO report = new ReportBaseVO();
+                report.reportType = object.optInt("reportType");
+                report.reportSequence = object.optInt("reportSequence");
+                report.reportBaseId = object.optString("reportBaseId");
+                report.reportName = object.optString("reportName");
+                report.voteCount = object.optInt("voteCount");
+
+                Progress progress = dao.queryProgress(app.temp.medicalRegInfoId, app.temp.linshiDengluma, object.optString("reportBaseId"), app.temp.voteMeetingId);
+                if (null != progress && null != progress.reportBaseId) {
+                    report.progress = progress.progress;
+                } else {
+                    dao.saveProgress(app.temp.medicalRegInfoId, app.temp.linshiDengluma, object.optString("reportBaseId"), app.temp.voteMeetingId, object.optInt("voteCount"), 0);
+                }
+                reports.add(report);
+            }
+        } else {
+            Toast.makeText(MainActivity.this, response.optString(Constant.TIPMESSAGE), Toast.LENGTH_SHORT).show();
+        }
+        handler.sendEmptyMessage(1);
     }
 
     /**
@@ -69,13 +105,12 @@ public class MainActivity extends BaseActivity implements AdapterView.OnItemClic
         params.put("linshiDengluma", app.temp.linshiDengluma);//临时登陆码
         params.put("medicalRegInfoId", app.temp.medicalRegInfoId);//执业机构主键
         params.put("voteMeetingId", app.temp.voteMeetingId);//投票会议主键
-        //Log.e("mobile_showAllReport======", url + "?linshiDengluma=" + app.temp.linshiDengluma + "&medicalRegInfoId=" + app.temp.medicalRegInfoId + "&voteMeetingId=" + app.temp.voteMeetingId);
-
         VSClient.get(url, params, new JsonHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
                 //Log.e("mobile_showAllReport======", response.toString());
                 if (response.optInt(Constant.STATUS) == 1) {
+                    reports.clear();
                     JSONArray jsonArray = response.optJSONArray(Constant.VO);
                     if (jsonArray == null || jsonArray.length() == 0) return;
 
@@ -117,29 +152,22 @@ public class MainActivity extends BaseActivity implements AdapterView.OnItemClic
                     reportAdapter.notifyDataSetChanged();
                     break;
                 case 200:
-                    boolean flag = true;
-                    for (ReportBaseVO r : reports) {
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setTitle("提示")
+                            .setIconAttribute(android.R.attr.alertDialogIcon)
+                            .setMessage("确认投票吗?")
+                            .setPositiveButton("确认", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    mobile_voteConfirm();
+                                }
+                            })
+                            .setNegativeButton("取消", null)
+                            .create().show();
+
+                    /*for (ReportBaseVO r : reports) {
                         int count = dao.voteComplete(app.temp.medicalRegInfoId, app.temp.linshiDengluma, r.reportBaseId, app.temp.voteMeetingId);
-                        if (count <= 0) {
-                            flag = false;
-                            break;
-                        }
-                    }
-                    if (flag) {
-                        mobile_voteConfirm();
-                    } else {
-                        new AlertDialog.Builder(MainActivity.this).setTitle("提示")
-                                .setIconAttribute(android.R.attr.alertDialogIcon)
-                                .setMessage("您有评价未完成,请完成相关评价后再提交!")
-                                .setPositiveButton("确认", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        dialog.dismiss();
-                                    }
-                                })
-                                .setNegativeButton("取消", null)
-                                .create().show();
-                    }
+                    }*/
                     break;
                 default:
                     break;
@@ -190,7 +218,14 @@ public class MainActivity extends BaseActivity implements AdapterView.OnItemClic
         }
         if (intent != null) {
             intent.putExtra("reportBaseId", report.reportBaseId);
-            startActivity(intent);
+            startActivityForResult(intent, REQUEST_CODE);
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (resultCode == REQUEST_CODE) {
+            mobile_showAllReport_local();
         }
     }
 
@@ -206,31 +241,68 @@ public class MainActivity extends BaseActivity implements AdapterView.OnItemClic
      * 确认提交
      */
     private void mobile_voteConfirm() {
-        String url = Constant.BASE_HTTP + "/tpms/mobile_voteConfirm.mobile";
-        final RequestParams params = new RequestParams();
-        params.put("linshiDengluma", app.temp.linshiDengluma);//临时登陆码
-        params.put("medicalRegInfoId", app.temp.medicalRegInfoId);//执业机构主键
-        params.put("voteMeetingId", app.temp.voteMeetingId);//投票会议主键
-        VSClient.get(url, params, new JsonHttpResponseHandler() {
-            @Override
-            public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
-                if (response.optInt(Constant.STATUS) == 1) {
-                    Toast.makeText(MainActivity.this, "确认成功", Toast.LENGTH_SHORT).show();
-                    Intent intent = new Intent(MainActivity.this, LoginActivity.class);
-                    startActivity(intent);
-                    finish();
-                } else {
-                    Toast.makeText(MainActivity.this, response.optString(Constant.TIPMESSAGE), Toast.LENGTH_SHORT).show();
-                }
-            }
+        List<Progress> progressList = dao.queryProgressByLinshiDengluma(app.temp.linshiDengluma);
+        if (progressList == null || progressList.size() == 0) return;
 
-            @Override
-            public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse) {
-                Toast.makeText(MainActivity.this, R.string.exception_prompt, Toast.LENGTH_SHORT).show();
+        boolean isConfirm = true;
+        for (Progress progress : progressList) {
+            if (progress.progress != progress.voteCount || progress.voteCount == 0) {
+                isConfirm = false;
+                break;
             }
-        });
+        }
+        if (isConfirm) {
+            String url = Constant.BASE_HTTP + app.getServerUrlToPrefs() + "/tpms/mobile_voteConfirm.mobile";
+        /*Log.e("**********", url
+                        + "?linshiDengluma=" + app.temp.linshiDengluma
+                        + "&medicalRegInfoId=" + app.temp.medicalRegInfoId
+                        + "&voteMeetingId=" + app.temp.voteMeetingId
+                        + "&macAddress=" + app.macAddress
+        );*/
+            final RequestParams params = new RequestParams();
+            params.put("linshiDengluma", app.temp.linshiDengluma);//临时登陆码
+            params.put("medicalRegInfoId", app.temp.medicalRegInfoId);//执业机构主键
+            params.put("voteMeetingId", app.temp.voteMeetingId);//投票会议主键
+            params.put("macAddress", app.macAddress);
+            VSClient.get(url, params, new JsonHttpResponseHandler() {
+                @Override
+                public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
+                    if (response.optInt(Constant.STATUS) == 1) {
+                        Toast.makeText(MainActivity.this, "确认成功", Toast.LENGTH_SHORT).show();
+                    }
+                }
+
+                @Override
+                public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse) {
+                }
+
+                @Override
+                public void onFinish() {
+                    toLogin();
+                }
+            });
+        } else {
+           // toLogin();
+            Toast.makeText(MainActivity.this, "投票未完成,请先完成投票再确认", Toast.LENGTH_LONG).show();
+        }
     }
 
+    /**
+     * 跳转
+     */
+    private void toLogin() {
+        Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+        startActivity(intent);
+        finish();
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        getActionBar().setDisplayShowTitleEnabled(false);
+        getActionBar().setDisplayHomeAsUpEnabled(false);
+        getActionBar().setDisplayShowHomeEnabled(true);
+    }
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {

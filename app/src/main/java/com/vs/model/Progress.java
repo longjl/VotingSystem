@@ -5,5 +5,6 @@ package com.vs.model;
  */
 public class Progress {
     public int progress;
+    public int voteCount;
     public String reportBaseId;
 }

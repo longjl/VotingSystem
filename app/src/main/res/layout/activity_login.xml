@@ -79,6 +79,5 @@
                 android:textColor="@android:color/white"
                 android:textSize="@dimen/text_size_22" />
         </LinearLayout>
-
     </LinearLayout>
 </RelativeLayout>

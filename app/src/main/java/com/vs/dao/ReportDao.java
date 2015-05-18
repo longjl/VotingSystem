@@ -4,8 +4,10 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
+import com.vs.model.Person;
 import com.vs.model.Progress;
 import com.vs.model.ReportResult;
+import com.vs.model.Temp;
 import com.vs.util.DatabaseHelper;
 
 import java.util.ArrayList;
@@ -62,7 +64,7 @@ public class ReportDao {
      * @return
      */
     public ReportResult findReportResult(ReportResult reportResult) {
-        StringBuffer buffer = new StringBuffer("select r.reportResult,r.radioId,r.extraResult from report_result  r where ");
+        StringBuffer buffer = new StringBuffer("select r.reportResult,r.radioId from report_result  r where ");
         buffer.append(" r.medicalRegInfoId=? ");
         buffer.append(" and r.pingjiarenLinshiDengluma=? ");
         buffer.append(" and r.reportBaseId=? ");
@@ -83,7 +85,6 @@ public class ReportDao {
             while (cursor.moveToNext()) {
                 result.reportResult = cursor.getString(cursor.getColumnIndex("reportResult"));
                 result.radioId = cursor.getInt(cursor.getColumnIndex("radioId"));
-                result.extraResult = cursor.getString(cursor.getColumnIndex("extraResult"));
                 break;
             }
         }
@@ -148,9 +149,9 @@ public class ReportDao {
     public void update(ReportResult reportResult) {
         StringBuffer sql = new StringBuffer("update report_result  set reportResult=?,radioId=?,inputDisplay=? ");
 
-        if (reportResult.extraResult != null) {
-            sql.append(" ,extraResult ='" + reportResult.extraResult + "'");
-        }
+//        if (reportResult.extraResult != null) {
+//            sql.append(" ,extraResult ='" + reportResult.extraResult + "'");
+//        }
         sql.append(" where medicalRegInfoId=? ");
         sql.append(" and pingjiarenLinshiDengluma=? and reportBaseId=? and reportDetailId=? ");
         sql.append(" and voteMeetingId=? ");
@@ -211,6 +212,67 @@ public class ReportDao {
         }
         return reportResultList;
     }
+
+    public List<ReportResult> findAll(Temp temp) {
+        StringBuffer buffer = new StringBuffer("select voteMeetingId,medicalRegInfoId,reportBaseId,pingjiarenLinshiDengluma,reportDetailId,reportResult,lingdaoGanbuId ");
+        buffer.append(" from report_result where ");
+        buffer.append(" medicalRegInfoId=? ");
+        buffer.append(" and pingjiarenLinshiDengluma=? ");
+        buffer.append(" and voteMeetingId=? ");
+        Cursor cursor = db.rawQuery(buffer.toString(),
+                new String[]{
+                        temp.medicalRegInfoId,
+                        temp.linshiDengluma,
+                        temp.voteMeetingId
+                });
+
+        if (null == cursor) return null;
+
+        List<ReportResult> reportResultList = new ArrayList<ReportResult>();
+        while (cursor.moveToNext()) {
+            ReportResult result = new ReportResult();
+            result.voteMeetingId = cursor.getString(cursor.getColumnIndex("voteMeetingId"));
+            result.medicalRegInfoId = cursor.getString(cursor.getColumnIndex("medicalRegInfoId"));
+            result.reportBaseId = cursor.getString(cursor.getColumnIndex("reportBaseId"));
+            result.pingjiarenLinshiDengluma = cursor.getString(cursor.getColumnIndex("pingjiarenLinshiDengluma"));
+            result.reportDetailId = cursor.getString(cursor.getColumnIndex("reportDetailId"));
+            result.lingdaoGanbuId = cursor.getString(cursor.getColumnIndex("lingdaoGanbuId"));
+            result.reportResult = cursor.getString(cursor.getColumnIndex("reportResult"));
+            reportResultList.add(result);
+        }
+        return reportResultList;
+    }
+
+    /**
+     * 根据临时登录码查询
+     *
+     * @param linshiDengluma
+     * @return
+     */
+    public List<ReportResult> findAllByLinshiDengluma(String linshiDengluma) {
+        StringBuffer buffer = new StringBuffer("select voteMeetingId,medicalRegInfoId,reportBaseId,pingjiarenLinshiDengluma,reportDetailId,reportResult,lingdaoGanbuId ");
+        buffer.append(" from report_result where pingjiarenLinshiDengluma=?");
+        Cursor cursor = db.rawQuery(buffer.toString(),
+                new String[]{linshiDengluma});
+
+        if (null == cursor) return null;
+
+        List<ReportResult> reportResultList = new ArrayList<ReportResult>();
+        while (cursor.moveToNext()) {
+            ReportResult result = new ReportResult();
+            result.voteMeetingId = cursor.getString(cursor.getColumnIndex("voteMeetingId"));
+            result.medicalRegInfoId = cursor.getString(cursor.getColumnIndex("medicalRegInfoId"));
+            result.reportBaseId = cursor.getString(cursor.getColumnIndex("reportBaseId"));
+            result.pingjiarenLinshiDengluma = cursor.getString(cursor.getColumnIndex("pingjiarenLinshiDengluma"));
+            result.reportDetailId = cursor.getString(cursor.getColumnIndex("reportDetailId"));
+            result.lingdaoGanbuId = cursor.getString(cursor.getColumnIndex("lingdaoGanbuId"));
+            result.reportResult = cursor.getString(cursor.getColumnIndex("reportResult"));
+            reportResultList.add(result);
+        }
+        return reportResultList;
+    }
+
+
 
     /* ------------------更改投票状态------------------*/
 
@@ -284,12 +346,39 @@ public class ReportDao {
             while (cursor.moveToNext()) {
                 progress.progress = cursor.getInt(cursor.getColumnIndex("progress"));
                 progress.reportBaseId = cursor.getString(cursor.getColumnIndex("reportBaseId"));
+                break;
             }
         } else {
             progress.progress = 0;
             progress.reportBaseId = null;
         }
         return progress;
+    }
+
+    /**
+     * 根据登录码查询进度
+     *
+     * @param linshiDengluma
+     * @return
+     */
+    public List<Progress> queryProgressByLinshiDengluma(String linshiDengluma) {
+        StringBuffer buffer = new StringBuffer("select progress,voteCount from vote_progress ");
+        buffer.append(" where pingjiarenLinshiDengluma=?");
+
+        Cursor cursor = db.rawQuery(buffer.toString(),
+                new String[]{
+                        linshiDengluma
+                });
+        List<Progress> progressList = new ArrayList<Progress>();
+        if (null != cursor) {
+            while (cursor.moveToNext()) {
+                Progress progress = new Progress();
+                progress.progress = cursor.getInt(cursor.getColumnIndex("progress"));
+                progress.voteCount = cursor.getInt(cursor.getColumnIndex("voteCount"));
+                progressList.add(progress);
+            }
+        }
+        return progressList;
     }
 
 
@@ -361,7 +450,6 @@ public class ReportDao {
         buffer.append(" and reportBaseId=?");
         buffer.append(" and voteMeetingId=?");
         buffer.append(" and lingdaoGanbuId=?");
-
         Cursor cursor = db.rawQuery(buffer.toString(),
                 new String[]{
                         medicalRegInfoId,

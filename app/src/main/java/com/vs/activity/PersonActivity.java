@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
@@ -49,6 +50,7 @@ public class PersonActivity extends BaseActivity implements AdapterView.OnItemCl
         getActionBar().setDisplayShowTitleEnabled(false);
         getActionBar().setDisplayShowHomeEnabled(true);
         getActionBar().setDisplayHomeAsUpEnabled(true);
+        app.activities.add(this);
         dao = new ReportDao(this);
 
         grid_person = (GridView) findViewById(R.id.grid_person);
@@ -61,7 +63,42 @@ public class PersonActivity extends BaseActivity implements AdapterView.OnItemCl
         grid_person.setAdapter(adapter);
         reportType = getIntent().getIntExtra("reportType", 0);
         reportBaseId = getIntent().getStringExtra("reportBaseId");
-        mobile_queryAllVotePerson(reportBaseId);
+        mobile_queryAllVotePerson_local(reportBaseId);
+    }
+
+    /**
+     * 加载本地数据
+     */
+    private void mobile_queryAllVotePerson_local(final String reportBaseId) {
+        JSONObject response = app.loadJsonObject(reportBaseId + "_user");
+        if (response == null) {
+            Toast.makeText(PersonActivity.this, "没有数据", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        //Log.e("----------",response.toString());
+        if (response.optInt(Constant.STATUS) == 1) {
+            persons.clear();
+            JSONArray jsonArray = response.optJSONArray(Constant.VO);
+            if (null != jsonArray && jsonArray.length() > 0) {
+                for (int i = 0; i < jsonArray.length(); i++) {
+                    JSONObject object = jsonArray.optJSONObject(i);
+                    Person person = new Person();
+                    person.lingdaoGanbuId = object.optString("lingdaoGanbuId");
+                    person.name = object.optString("name");
+                    person.birthday = object.optString("birthday");
+                    person.sex = object.optString("sex");
+                    person.xianrenzhiwu = object.optString("xianrenzhiwu");
+                    person.yuanrenZhiwu = object.optString("yuanrenZhiwu");
+                    person.renzhishijian = object.optString("renzhishijian");
+
+                    person.progress = dao.queryPersonProgress(app.temp.medicalRegInfoId, app.temp.linshiDengluma, reportBaseId, app.temp.voteMeetingId, person.lingdaoGanbuId);
+                    persons.add(person);
+                }
+            }
+        } else {
+            Toast.makeText(PersonActivity.this, response.optString(Constant.TIPMESSAGE), Toast.LENGTH_SHORT).show();
+        }
+        handler.sendEmptyMessage(1);
     }
 
 
@@ -69,7 +106,7 @@ public class PersonActivity extends BaseActivity implements AdapterView.OnItemCl
      * 投票人员
      */
     private void mobile_queryAllVotePerson(final String reportBaseId) {
-        String url = Constant.BASE_HTTP + "/tpms/mobile_queryAllVotePerson.mobile";
+        String url = Constant.BASE_HTTP + app.getServerUrlToPrefs() + "/tpms/mobile_queryAllVotePerson.mobile";
         RequestParams params = new RequestParams();
         params.put("linshiDengluma", app.temp.linshiDengluma);//临时登陆码
         params.put("medicalRegInfoId", app.temp.medicalRegInfoId);//执业机构主键
@@ -78,7 +115,6 @@ public class PersonActivity extends BaseActivity implements AdapterView.OnItemCl
         VSClient.get(url, params, new JsonHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
-                Log.e("mobile_queryAllVotePerson - >", response.toString());
                 if (response.optInt(Constant.STATUS) == 1) {
                     persons.clear();
                     JSONArray jsonArray = response.optJSONArray(Constant.VO);
@@ -147,17 +183,32 @@ public class PersonActivity extends BaseActivity implements AdapterView.OnItemCl
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (resultCode == REQUEST_CODE) {
-            dao.updateProgress(app.temp.medicalRegInfoId, app.temp.linshiDengluma, reportBaseId, app.temp.voteMeetingId);
-            mobile_queryAllVotePerson(reportBaseId);
+            mobile_queryAllVotePerson_local(reportBaseId);
         }
     }
 
     @Override
     public void onClick(View v) {
         if (R.id.btn_cancel == v.getId()) {
-            Intent intent = new Intent(PersonActivity.this, MainActivity.class);
-            startActivity(intent);
-            finish();
+            back();
         }
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            // 监控返回键
+            back();
+            return false;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    /**
+     * 返回
+     */
+    private void back() {
+        setResult(REQUEST_CODE);
+        finish();
     }
 }
