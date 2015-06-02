@@ -16,14 +16,18 @@ import com.vs.model.Temp;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 /**
  * Created by longjianlin on 15/3/26.
@@ -125,9 +129,6 @@ public class VSApplication extends Application {
         try {
             String fileName = "/sdcard/vs/" + key + ".json";//使用登录码作为文件的名字
             File file = new File(fileName);
-            if (file.exists()) {
-                file.delete();
-            }
             if (!file.exists()) {
                 FileOutputStream outStream = new FileOutputStream(file);
                 outStream.write(jsonObject.toString().getBytes());
@@ -140,38 +141,7 @@ public class VSApplication extends Application {
         }
     }
 
-    /**
-     * 读取JsonObject
-     *
-     * @param key
-     * @return
-     */
-    public JSONObject loadJsonObject(String key) {
-        JSONObject jsonObject = null;
-        String fileName = "/sdcard/vs/" + key + ".json";
-        File file = new File(fileName);
-        try {
-            if (file.exists()) {
-                FileInputStream inStream = new FileInputStream(file);
-                ByteArrayOutputStream stream = new ByteArrayOutputStream();
-                byte[] buffer = new byte[1024];
-                int length = -1;
-                while ((length = inStream.read(buffer)) != -1) {
-                    stream.write(buffer, 0, length);
-                }
-                stream.close();
-                inStream.close();
-                jsonObject = new JSONObject(stream.toString());
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-        return jsonObject;
-    }
+
 
     /**
      * 判断网络是否存在

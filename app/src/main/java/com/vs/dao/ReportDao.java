@@ -179,7 +179,7 @@ public class ReportDao {
      * @return Cursor
      */
     public List<ReportResult> findAll(ReportResult reportResult) {
-        StringBuffer buffer = new StringBuffer("select voteMeetingId,medicalRegInfoId,reportBaseId,pingjiarenLinshiDengluma,reportDetailId,reportResult,lingdaoGanbuId ");
+        StringBuffer buffer = new StringBuffer("select voteMeetingId,medicalRegInfoId,reportBaseId,pingjiarenLinshiDengluma,reportDetailId,reportResult,lingdaoGanbuId,createDate ");
         buffer.append(" from report_result where ");
         buffer.append(" medicalRegInfoId=? ");
         buffer.append(" and pingjiarenLinshiDengluma=? ");
@@ -208,6 +208,7 @@ public class ReportDao {
             result.reportDetailId = cursor.getString(cursor.getColumnIndex("reportDetailId"));
             result.lingdaoGanbuId = cursor.getString(cursor.getColumnIndex("lingdaoGanbuId"));
             result.reportResult = cursor.getString(cursor.getColumnIndex("reportResult"));
+            result.createDate = cursor.getString(cursor.getColumnIndex("createDate"));
             reportResultList.add(result);
         }
         return reportResultList;
@@ -250,7 +251,7 @@ public class ReportDao {
      * @return
      */
     public List<ReportResult> findAllByLinshiDengluma(String linshiDengluma) {
-        StringBuffer buffer = new StringBuffer("select voteMeetingId,medicalRegInfoId,reportBaseId,pingjiarenLinshiDengluma,reportDetailId,reportResult,lingdaoGanbuId ");
+        StringBuffer buffer = new StringBuffer("select voteMeetingId,medicalRegInfoId,reportBaseId,pingjiarenLinshiDengluma,reportDetailId,reportResult,lingdaoGanbuId,createDate ");
         buffer.append(" from report_result where pingjiarenLinshiDengluma=?");
         Cursor cursor = db.rawQuery(buffer.toString(),
                 new String[]{linshiDengluma});
@@ -267,6 +268,7 @@ public class ReportDao {
             result.reportDetailId = cursor.getString(cursor.getColumnIndex("reportDetailId"));
             result.lingdaoGanbuId = cursor.getString(cursor.getColumnIndex("lingdaoGanbuId"));
             result.reportResult = cursor.getString(cursor.getColumnIndex("reportResult"));
+            result.createDate = cursor.getString(cursor.getColumnIndex("createDate"));
             reportResultList.add(result);
         }
         return reportResultList;

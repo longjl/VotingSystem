@@ -15,6 +15,7 @@ public class VSClient {
      * 设置超时时间
      */
     static {
+        client.addHeader("RANGE", "bytes=1-1000000");
         client.setTimeout(Constant.CLIENT_TIMEOUT);
     }
 

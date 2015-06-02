@@ -1,6 +1,7 @@
 package com.vs.activity;
 
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
@@ -24,6 +25,7 @@ import com.vs.dao.ReportDao;
 import com.vs.model.Progress;
 import com.vs.model.ReportBaseVO;
 import com.vs.network.VSClient;
+import com.vs.util.RWData;
 
 import org.apache.http.Header;
 import org.json.JSONArray;
@@ -40,6 +42,7 @@ public class MainActivity extends BaseActivity implements AdapterView.OnItemClic
     private ReportDao dao;
     private Button btn_sure_vote;
     private static final int REQUEST_CODE = 200;
+    private ProgressDialog dialogLoading;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -62,7 +65,8 @@ public class MainActivity extends BaseActivity implements AdapterView.OnItemClic
      * 读取本地数据
      */
     private void mobile_showAllReport_local() {
-        JSONObject response = app.loadJsonObject(app.temp.linshiDengluma);
+        String filePath = "/sdcard/vs/" + app.temp.linshiDengluma + "/" + app.temp.linshiDengluma + ".json";
+        JSONObject response = RWData.loadJsonObject(filePath);
         if (response == null) {
             Toast.makeText(MainActivity.this, "数据加载失败,请重新加载数据", Toast.LENGTH_SHORT).show();
             return;
@@ -259,6 +263,7 @@ public class MainActivity extends BaseActivity implements AdapterView.OnItemClic
                         + "&voteMeetingId=" + app.temp.voteMeetingId
                         + "&macAddress=" + app.macAddress
         );*/
+            dialogLoading = ProgressDialog.show(MainActivity.this, "", "数据正在上传中. 请稍等...", true, false);
             final RequestParams params = new RequestParams();
             params.put("linshiDengluma", app.temp.linshiDengluma);//临时登陆码
             params.put("medicalRegInfoId", app.temp.medicalRegInfoId);//执业机构主键
@@ -278,11 +283,14 @@ public class MainActivity extends BaseActivity implements AdapterView.OnItemClic
 
                 @Override
                 public void onFinish() {
+                    if (dialogLoading != null && dialogLoading.isShowing()) {
+                        dialogLoading.dismiss();
+                    }
                     toLogin();
                 }
             });
         } else {
-           // toLogin();
+            // toLogin();
             Toast.makeText(MainActivity.this, "投票未完成,请先完成投票再确认", Toast.LENGTH_LONG).show();
         }
     }
@@ -299,9 +307,9 @@ public class MainActivity extends BaseActivity implements AdapterView.OnItemClic
     @Override
     public void onStart() {
         super.onStart();
-        getActionBar().setDisplayShowTitleEnabled(false);
         getActionBar().setDisplayHomeAsUpEnabled(false);
-        getActionBar().setDisplayShowHomeEnabled(true);
+        getActionBar().setDisplayShowTitleEnabled(true);
+        getActionBar().setDisplayShowHomeEnabled(false);
     }
 
     @Override

@@ -104,6 +104,7 @@ public class StartActivity extends BaseActivity implements View.OnClickListener 
                 map.put("reportResultList[" + index + "].reportDetailId", result.reportDetailId);
                 map.put("reportResultList[" + index + "].reportResult", result.reportResult);
                 map.put("reportResultList[" + index + "].lingdaoGanbuId", result.lingdaoGanbuId);
+                map.put("reportResultList[" + index + "].createDate", result.createDate);
                 index++;
             }
             RequestParams params = new RequestParams(map);

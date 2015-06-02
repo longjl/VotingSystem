@@ -51,6 +51,7 @@ public class SettingActivity extends BaseActivity implements View.OnClickListene
     @Override
     public void onStart() {
         super.onStart();
-        getActionBar().setDisplayShowTitleEnabled(false);
+        getActionBar().setDisplayShowTitleEnabled(true);
+        getActionBar().setDisplayShowHomeEnabled(false);
     }
 }

@@ -4,7 +4,6 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.AdapterView;
@@ -20,6 +19,7 @@ import com.vs.adapters.VotePersonAdapter;
 import com.vs.dao.ReportDao;
 import com.vs.model.Person;
 import com.vs.network.VSClient;
+import com.vs.util.RWData;
 
 import org.apache.http.Header;
 import org.json.JSONArray;
@@ -47,9 +47,6 @@ public class PersonActivity extends BaseActivity implements AdapterView.OnItemCl
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_person);
-        getActionBar().setDisplayShowTitleEnabled(false);
-        getActionBar().setDisplayShowHomeEnabled(true);
-        getActionBar().setDisplayHomeAsUpEnabled(true);
         app.activities.add(this);
         dao = new ReportDao(this);
 
@@ -66,11 +63,21 @@ public class PersonActivity extends BaseActivity implements AdapterView.OnItemCl
         mobile_queryAllVotePerson_local(reportBaseId);
     }
 
+    @Override
+    public void onStart() {
+        super.onStart();
+        getActionBar().setDisplayHomeAsUpEnabled(true);
+        getActionBar().setDisplayShowTitleEnabled(true);
+        getActionBar().setDisplayShowHomeEnabled(false);
+    }
+
+
     /**
      * 加载本地数据
      */
     private void mobile_queryAllVotePerson_local(final String reportBaseId) {
-        JSONObject response = app.loadJsonObject(reportBaseId + "_user");
+        String filePath = "/sdcard/vs/" + app.temp.linshiDengluma + "/" + app.temp.linshiDengluma + "_" + reportBaseId + "_user.json";
+        JSONObject response = RWData.loadJsonObject(filePath);
         if (response == null) {
             Toast.makeText(PersonActivity.this, "没有数据", Toast.LENGTH_SHORT).show();
             return;

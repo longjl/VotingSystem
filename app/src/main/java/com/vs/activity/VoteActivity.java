@@ -27,6 +27,7 @@ import com.vs.model.ReportBaseVO;
 import com.vs.model.ReportDetailVO;
 import com.vs.model.ReportResult;
 import com.vs.network.VSClient;
+import com.vs.util.RWData;
 import com.vs.views.MyListView;
 
 import org.apache.http.Header;
@@ -136,9 +137,9 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
     @Override
     public void onStart() {
         super.onStart();
-        getActionBar().setDisplayShowTitleEnabled(false);
-        getActionBar().setDisplayShowHomeEnabled(true);
         getActionBar().setDisplayHomeAsUpEnabled(false);
+        getActionBar().setDisplayShowTitleEnabled(true);
+        getActionBar().setDisplayShowHomeEnabled(false);
     }
 
     private void initData(String reportBaseId) {
@@ -167,7 +168,8 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
      * @param reportBaseId
      */
     private void mobile_toVoteDetailPage_local(final String reportBaseId) {
-        JSONObject response = app.loadJsonObject(reportBaseId);
+        String filePath = "/sdcard/vs/" + app.temp.linshiDengluma + "/" + app.temp.linshiDengluma + "_" + reportBaseId + ".json";
+        JSONObject response = RWData.loadJsonObject(filePath);
         if (response == null) {
             Toast.makeText(VoteActivity.this, "没有投票选项数据", Toast.LENGTH_SHORT).show();
             return;
@@ -327,10 +329,6 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
         if (isChecked) {//判断是否已经投票(只有投票了才能下一题)
             int count = reportBaseVO.reportDetailVOList.size();
             if (count > (currentPosition + 1)) {
-                updateOrSaveRadio(rg_vote.getCheckedRadioButtonId());//下一步之前保存上一次的选择记录
-                mCurrentPosition += 1;
-                showReportDetail(mCurrentPosition);
-            } else {
                 ReportDetailVO reportDetailVO = reportBaseVO.reportDetailVOList.get(mCurrentPosition);
                 switch (reportDetailVO.elementType) {
                     case 1://文本
@@ -341,7 +339,24 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
                         updateOrSaveRadio(rg_vote.getCheckedRadioButtonId());//下一步之前保存上一次的选择记录
                         break;
                 }
-                mobile_save();
+                mCurrentPosition += 1;
+                showReportDetail(mCurrentPosition);
+            } else {
+                if(rg_vote.getCheckedRadioButtonId() == -1){
+                    Toast.makeText(VoteActivity.this, "请选择投票选项", Toast.LENGTH_SHORT).show();
+                }else{
+                    ReportDetailVO reportDetailVO = reportBaseVO.reportDetailVOList.get(mCurrentPosition);
+                    switch (reportDetailVO.elementType) {
+                        case 1://文本
+                            reportResult.reportResult = et_text.getText().toString();
+                            dao.updateOrSaveReportResult(reportResult);
+                            break;
+                        case 2://单选框
+                            updateOrSaveRadio(rg_vote.getCheckedRadioButtonId());//下一步之前保存上一次的选择记录
+                            break;
+                    }
+                    mobile_save();
+                }
             }
         } else {
             Toast.makeText(VoteActivity.this, "请选择投票选项", Toast.LENGTH_SHORT).show();
@@ -357,6 +372,7 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
         dialogLoading = ProgressDialog.show(VoteActivity.this, "", "数据正在上传中. 请稍等...", true, false);
         if (!app.isNetworkConnected(this)) {//网络不可用
             dialogLoading.dismiss();
+            dao.updateProgress(app.temp.medicalRegInfoId, app.temp.linshiDengluma, reportResult.reportBaseId, app.temp.voteMeetingId);
             back();
             return;
         }
@@ -374,6 +390,7 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
             map.put("reportResultList[" + index + "].pingjiarenLinshiDengluma", result.pingjiarenLinshiDengluma);
             map.put("reportResultList[" + index + "].reportDetailId", result.reportDetailId);
             map.put("reportResultList[" + index + "].reportResult", result.reportResult);
+            map.put("reportResultList[" + index + "].createDate", result.createDate);
             index++;
         }
         RequestParams params = new RequestParams(map);
@@ -385,21 +402,22 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
         VSClient.post(url, params, new JsonHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
+                if (dialogLoading != null && dialogLoading.isShowing()) {
+                    dialogLoading.dismiss();
+                }
                 if (response.optInt(Constant.STATUS) == 1) {
                     Toast.makeText(VoteActivity.this, "投票数据已保存", Toast.LENGTH_SHORT).show();
+                    dao.updateProgress(app.temp.medicalRegInfoId, app.temp.linshiDengluma, reportResult.reportBaseId, app.temp.voteMeetingId);
+                    back();
                 }
             }
 
             @Override
             public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse) {
-
-            }
-
-            @Override
-            public void onFinish() {
                 if (dialogLoading != null && dialogLoading.isShowing()) {
                     dialogLoading.dismiss();
                 }
+                Toast.makeText(VoteActivity.this, "onFailure", Toast.LENGTH_SHORT).show();
                 dao.updateProgress(app.temp.medicalRegInfoId, app.temp.linshiDengluma, reportResult.reportBaseId, app.temp.voteMeetingId);
                 back();
             }
@@ -416,40 +434,60 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
         if (reportBaseVO != null && reportBaseVO.reportName != null) {
             layout_report_name.setVisibility(View.VISIBLE);
             tv_reportName.setText(reportBaseVO.reportName);
+        } else {
+            layout_report_name.setVisibility(View.GONE);
         }
 
         ReportDetailVO reportDetailVO = reportBaseVO.reportDetailVOList.get(position);
-
         //显示第一区域标题
         if (reportDetailVO.titleFirst != null && reportDetailVO.titleFirst.length() > 0) {
             layout_first_title.setVisibility(View.VISIBLE);
             tv_titleFirst.setText(reportDetailVO.titleFirst);
+        } else {
+            layout_first_title.setVisibility(View.GONE);
         }
 
         //显示第一区域内容
         if (reportDetailVO.detailFirst != null && reportDetailVO.detailFirst.length() > 0) {
             layout_first_content.setVisibility(View.VISIBLE);
             tv_detailFirst.setText(reportDetailVO.detailFirst);
+        } else {
+            layout_first_content.setVisibility(View.GONE);
         }
 
         //显示第二区域标题
         if (reportDetailVO.titleSecond != null && reportDetailVO.titleSecond.length() > 0) {
             layout_second_title.setVisibility(View.VISIBLE);
             tv_titleSecond.setText(reportDetailVO.titleSecond);
+        } else {
+            layout_second_title.setVisibility(View.GONE);
         }
+
         //显示第二区域内容
         if (reportDetailVO.detailSecond != null && reportDetailVO.detailSecond.length() > 0) {
             layout_second_content.setVisibility(View.VISIBLE);
             tv_detailSecond.setText(reportDetailVO.detailSecond);
+        } else {
+            layout_second_content.setVisibility(View.GONE);
         }
+
         //显示投票选项
         tv_titleVote.setText(reportDetailVO.titleVote);
 
         //判断是单选框,文本框
         switch (reportDetailVO.elementType) {
             case 1://文本
+                isChecked = true;
                 layout_elementtype_1.setVisibility(View.VISIBLE);
                 layout_elementtype_2.setVisibility(View.GONE);
+
+                reportResult.reportDetailId = reportDetailVO.reportDetailId;
+                ReportResult result = dao.findReportResult(reportResult);
+                if (result != null && result.reportResult != null) {
+                    et_text.setText(result.reportResult);
+                } else {
+                    et_text.setText("");
+                }
                 break;
             case 2://单选框
                 layout_elementtype_1.setVisibility(View.GONE);

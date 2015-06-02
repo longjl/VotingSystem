@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -16,6 +17,8 @@ import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.Toast;
 
+import com.loopj.android.http.BinaryHttpResponseHandler;
+import com.loopj.android.http.FileAsyncHttpResponseHandler;
 import com.loopj.android.http.JsonHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
 import com.vs.Constant;
@@ -26,11 +29,13 @@ import com.vs.model.Progress;
 import com.vs.model.ReportBaseVO;
 import com.vs.model.ReportResult;
 import com.vs.network.VSClient;
+import com.vs.tasks.DataHandlerAsyncTask;
 
 import org.apache.http.Header;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -39,19 +44,23 @@ import java.util.Map;
 /**
  * Created by longjianlin on 15/3/25.
  */
-public class LoginActivity extends BaseActivity implements AdapterView.OnItemSelectedListener, View.OnClickListener {
+public class LoginActivity extends BaseActivity implements AdapterView.OnItemSelectedListener, View.OnClickListener,
+        DataHandlerAsyncTask.ResultListener {
+
     private Spinner mSpinner;
     private EditText et_linshiDengluma;//临时登录码
     private Button btn_linshiDengluma;
     private Button btn_start_vote;//开始投票
 
-    private int pos = 0;
     private final ArrayList<Organization> mOrg = new ArrayList<Organization>();
     private ArrayAdapter<Organization> mAdapter;
     private List<ReportResult> reportResultList = new ArrayList<ReportResult>();//上传投票数据
     private ReportDao dao;
     private ProgressDialog dialog;
     private ProgressDialog dialogLoading;
+    private ProgressDialog progressDialog;
+    private DataHandlerAsyncTask.ResultListener resultListener;
+
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -59,6 +68,9 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
         setContentView(R.layout.activity_login);
         app.activities.add(this);
         dao = new ReportDao(this);
+
+        resultListener = this;
+
         mSpinner = (Spinner) findViewById(R.id.spinner);
         mSpinner.setOnItemSelectedListener(this);
         mAdapter = new ArrayAdapter<Organization>(this, R.layout.layout_spinner_item, mOrg);
@@ -173,6 +185,7 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
                 map.put("reportResultList[" + index + "].reportDetailId", result.reportDetailId);
                 map.put("reportResultList[" + index + "].reportResult", result.reportResult);
                 map.put("reportResultList[" + index + "].lingdaoGanbuId", result.lingdaoGanbuId);
+                map.put("reportResultList[" + index + "].createDate", result.createDate);
                 index++;
             }
             RequestParams params = new RequestParams(map);
@@ -255,6 +268,7 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
         VSClient.get(url, params, new JsonHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
+                hideProgressDialog();
                 if (response.optInt(Constant.STATUS) == 1) {
                     JSONObject object = response.optJSONObject(Constant.VO);
                     if (object == null) return;
@@ -263,14 +277,13 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
                     app.temp.voteMeetingId = object.optString("voteMeetingId");
                     et_linshiDengluma.setText(object.optString("linshiDengluma"));
                     if (object.optString("linshiDengluma") != null) {
-                        mobile_showAllReport(server_url);
+                        //mobile_showAllReport(server_url);
                         btn_start_vote.setEnabled(true);
                     }
                 } else {
                     Toast.makeText(LoginActivity.this, response.optString(Constant.TIPMESSAGE), Toast.LENGTH_SHORT).show();
                     app.temp.linshiDengluma = null;
                     app.temp.voteMeetingId = null;
-                    hideProgressDialog();
                     handler.sendEmptyMessage(0);
                 }
             }
@@ -283,6 +296,52 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
             }
         });
     }
+
+    /**
+     * 查询所以信息
+     * 临时登陆码
+     * 执业机构主键
+     * 投票会议主键
+     */
+    private void mobile_getAllMessage(final String server_url) {
+        String url = Constant.BASE_HTTP + server_url + "/tpms/mobile_getAllMessage.mobile";
+        RequestParams params = new RequestParams();
+        params.put("linshiDengluma", app.temp.linshiDengluma);//临时登陆码
+        params.put("medicalRegInfoId", app.temp.medicalRegInfoId);//执业机构主键
+        params.put("voteMeetingId", app.temp.voteMeetingId);//投票会议主键
+        downloadHandler.sendEmptyMessage(1);
+        String[] allowedContentTypes = new String[]{"APPLICATION/OCTET-STREAM"};
+        VSClient.get(url, params, new BinaryHttpResponseHandler(allowedContentTypes) {
+
+            @Override
+            public void onSuccess(int i, Header[] headers, byte[] bytes) {
+
+                if (bytes != null && bytes.length > 0) {
+                    DataHandlerAsyncTask.execute(resultListener, bytes, app.temp);
+                }
+            }
+
+            @Override
+            public void onFailure(int i, Header[] headers, byte[] bytes, Throwable throwable) {
+                Toast.makeText(LoginActivity.this, "数据加载失败", Toast.LENGTH_SHORT).show();
+                downloadHandler.sendEmptyMessage(2);
+            }
+        });
+    }
+
+    private Handler downloadHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            if (msg.what == 1) {
+                progressDialog = ProgressDialog.show(LoginActivity.this, "", "数据加载中, 请稍等...", true, false);
+            } else if (msg.what == 2) {
+                if (progressDialog != null) {
+                    progressDialog.dismiss();
+                }
+            }
+        }
+    };
+
 
     /**
      * 投票报表列表
@@ -393,14 +452,30 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
      */
     @Override
     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-        pos = position;
-        Organization organization = mOrg.get(position);
+        final Organization organization = mOrg.get(position);
         if (organization.medicalRegInfoId != null) {
-            app.temp.medicalRegInfoId = organization.medicalRegInfoId;
+            new AlertDialog.Builder(LoginActivity.this).setTitle("提示")
+                    .setIconAttribute(android.R.attr.alertDialogIcon)
+                    .setMessage("请确认您的单位是" + organization.medicalName)
+                    .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            app.temp.medicalRegInfoId = organization.medicalRegInfoId;
+                            et_linshiDengluma.setText("");
+                        }
+                    })
+                    .setNegativeButton("取消", new DialogInterface.OnClickListener() {
+
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            mSpinner.setSelection(0);
+                            mAdapter.notifyDataSetChanged();
+                        }
+                    })
+                    .create().show();
         } else {
             app.temp.medicalRegInfoId = null;
         }
-        et_linshiDengluma.setText("");
     }
 
     @Override
@@ -410,16 +485,15 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
 
     @Override
     public void onClick(View v) {
-        if (v.getId() == btn_linshiDengluma.getId()) {
+        if (v.getId() == btn_linshiDengluma.getId()) {//获取临时登录码
             if (app.temp.medicalRegInfoId == null) {
                 Toast.makeText(this, R.string.choose_unit_prompt, Toast.LENGTH_SHORT).show();
                 return;
             }
             mobile_getLinshiDengluma(app.getServerUrlToPrefs());
-        } else if (v.getId() == btn_start_vote.getId()) {
-
-
-            new AlertDialog.Builder(LoginActivity.this).setTitle("提示")
+        } else if (v.getId() == btn_start_vote.getId()) {//开始投票
+            mobile_getAllMessage(app.getServerUrlToPrefs());
+            /*new AlertDialog.Builder(LoginActivity.this).setTitle("提示")
                     .setIconAttribute(android.R.attr.alertDialogIcon)
                     .setMessage("请确认您的单位是" + mOrg.get(pos).medicalName)
                     .setPositiveButton("确定", new DialogInterface.OnClickListener() {
@@ -432,13 +506,13 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
                         }
                     })
                     .setNegativeButton("取消", null)
-                    .create().show();
+                    .create().show();*/
 
         }
     }
 
     private void showProgressDialog() {
-        dialog = ProgressDialog.show(LoginActivity.this, "", "正在下载服务器数据. 请稍等...", true, false);
+        dialog = ProgressDialog.show(LoginActivity.this, "", "正在获取登录码. 请稍等...", true, false);
     }
 
 
@@ -464,6 +538,20 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
     @Override
     public void onStart() {
         super.onStart();
-        getActionBar().setDisplayShowTitleEnabled(false);
+        getActionBar().setDisplayShowTitleEnabled(true);
+        getActionBar().setDisplayShowHomeEnabled(false);
+    }
+
+    /**
+     * 保存zip 回调
+     */
+    @Override
+    public void onLoaded() {
+        if (progressDialog != null) {
+            progressDialog.dismiss();
+        }
+        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+        startActivity(intent);
+        finish();
     }
 }
