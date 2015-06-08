@@ -342,10 +342,10 @@ public class VoteActivity extends BaseActivity implements RadioGroup.OnCheckedCh
                 mCurrentPosition += 1;
                 showReportDetail(mCurrentPosition);
             } else {
-                if(rg_vote.getCheckedRadioButtonId() == -1){
+                ReportDetailVO reportDetailVO = reportBaseVO.reportDetailVOList.get(mCurrentPosition);
+                if(rg_vote.getCheckedRadioButtonId() == -1 && reportDetailVO.elementType==2){
                     Toast.makeText(VoteActivity.this, "请选择投票选项", Toast.LENGTH_SHORT).show();
                 }else{
-                    ReportDetailVO reportDetailVO = reportBaseVO.reportDetailVOList.get(mCurrentPosition);
                     switch (reportDetailVO.elementType) {
                         case 1://文本
                             reportResult.reportResult = et_text.getText().toString();

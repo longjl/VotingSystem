@@ -8,7 +8,6 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -18,7 +17,6 @@ import android.widget.Spinner;
 import android.widget.Toast;
 
 import com.loopj.android.http.BinaryHttpResponseHandler;
-import com.loopj.android.http.FileAsyncHttpResponseHandler;
 import com.loopj.android.http.JsonHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
 import com.vs.Constant;
@@ -35,7 +33,6 @@ import org.apache.http.Header;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -547,6 +544,9 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
      */
     @Override
     public void onLoaded() {
+        app.setPreKey("linshiDengluma",app.temp.linshiDengluma);//临时登陆码
+        app.setPreKey("medicalRegInfoId",app.temp.medicalRegInfoId);//执业机构主键
+        app.setPreKey("voteMeetingId",app.temp.voteMeetingId);//投票会议主键
         if (progressDialog != null) {
             progressDialog.dismiss();
         }

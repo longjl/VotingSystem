@@ -90,7 +90,9 @@ public class StartActivity extends BaseActivity implements View.OnClickListener 
      * 上传数据
      */
     private void mobile_save() {
-        if (app.getLinshiDenglumaToPrefs() == null) return;
+        if (app.getLinshiDenglumaToPrefs() == null) {
+            return;
+        }
 
         dialogHandler.sendEmptyMessage(1);
         reportResultList = dao.findAllByLinshiDengluma(app.getLinshiDenglumaToPrefs());
@@ -107,9 +109,10 @@ public class StartActivity extends BaseActivity implements View.OnClickListener 
                 map.put("reportResultList[" + index + "].createDate", result.createDate);
                 index++;
             }
+
             RequestParams params = new RequestParams(map);
-            params.put("voteMeetingId", app.temp.voteMeetingId);
-            params.put("medicalRegInfoId", app.temp.medicalRegInfoId);
+            params.put("voteMeetingId", app.getPreValue("voteMeetingId"));
+            params.put("medicalRegInfoId", app.getPreValue("medicalRegInfoId"));
             params.put("macAddress", app.macAddress);
 
             String url = Constant.BASE_HTTP + app.getServerUrlToPrefs() + "/tpms/mobile_save.mobile";
@@ -130,6 +133,8 @@ public class StartActivity extends BaseActivity implements View.OnClickListener 
                     dialogHandler.sendEmptyMessage(0);
                 }
             });
+        } else {
+            Toast.makeText(StartActivity.this, "投票记录已经全部上传", Toast.LENGTH_LONG).show();
         }
     }
 
@@ -151,9 +156,9 @@ public class StartActivity extends BaseActivity implements View.OnClickListener 
         if (isConfirm) {
             String url = Constant.BASE_HTTP + app.getServerUrlToPrefs() + "/tpms/mobile_voteConfirm.mobile";
             final RequestParams params = new RequestParams();
-            params.put("linshiDengluma", app.temp.linshiDengluma);//临时登陆码
-            params.put("medicalRegInfoId", app.temp.medicalRegInfoId);//执业机构主键
-            params.put("voteMeetingId", app.temp.voteMeetingId);//投票会议主键
+            params.put("linshiDengluma", app.getPreValue("linshiDengluma"));//临时登陆码
+            params.put("medicalRegInfoId", app.getPreValue("medicalRegInfoId"));//执业机构主键
+            params.put("voteMeetingId", app.getPreValue("voteMeetingId"));//投票会议主键
             params.put("macAddress", app.macAddress);
             VSClient.get(url, params, new JsonHttpResponseHandler() {
                 @Override

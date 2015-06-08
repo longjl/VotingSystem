@@ -37,8 +37,11 @@ public class VSApplication extends Application {
     private static final String TAG = "VSApplication";
     public String macAddress;//mac 地址
     public Temp temp = new Temp();
-    private static SharedPreferences mUrlPrefs;//保存服务器地址
+    public static SharedPreferences mUrlPrefs;//保存服务器地址
     public static SharedPreferences mLinshiDenglumaPrefs;//登录码
+
+    public static SharedPreferences sp;//存储临时信息
+
 
     public static VSApplication getApplication(Context context) {
         return (VSApplication) context.getApplicationContext();
@@ -49,6 +52,7 @@ public class VSApplication extends Application {
         super.onCreate();
         mUrlPrefs = PreferenceManager.getDefaultSharedPreferences(this);
         mLinshiDenglumaPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+        sp = PreferenceManager.getDefaultSharedPreferences(this);
         getMacAddress();
     }
 
@@ -73,6 +77,19 @@ public class VSApplication extends Application {
             for (Activity activity : activities) activity.finish();
         }
         System.exit(0);
+    }
+
+    public void setPreKey(String key, String value) {
+        if (sp != null) {
+            sp.edit().putString(key, value).commit();
+        }
+    }
+
+    public String getPreValue(String key) {
+        if (sp != null) {
+            return sp.getString(key, null);
+        }
+        return null;
     }
 
 
@@ -140,7 +157,6 @@ public class VSApplication extends Application {
             e.printStackTrace();
         }
     }
-
 
 
     /**
