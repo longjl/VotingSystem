@@ -4,6 +4,7 @@ import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -58,7 +59,6 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
     private ProgressDialog progressDialog;
     private DataHandlerAsyncTask.ResultListener resultListener;
 
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -107,7 +107,7 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
             Toast.makeText(this, "请设置服务器地址", Toast.LENGTH_SHORT).show();
             return;
         }
-        dialogLoading = ProgressDialog.show(LoginActivity.this, "", "正在获取单位信息. 请稍等...", true, false);
+        dialogLoading = ProgressDialog.show(LoginActivity.this, "", "正在获取单位信息. 请稍等...", true, true);
         String url = Constant.BASE_HTTP + server_url + "/tpms/mobile_queryAllMedicalRegInfo.mobile";
         VSClient.get(url, null, new JsonHttpResponseHandler() {
             @Override
@@ -147,7 +147,7 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
             switch (msg.what) {
                 case 100:       //获取单位信息失败
                     hideDialog();
-                    btn_start_vote.setEnabled(false);
+                    //   btn_start_vote.setEnabled(false);
                     et_linshiDengluma.setText(null);
                     break;
                 case 200:       //获取单位信息成功
@@ -169,9 +169,9 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
      * 上传数据
      */
     private void mobile_save() {
-        if (app.getLinshiDenglumaToPrefs() == null) return;
+        if (app.getPreValue("linshiDengluma") == null) return;
 
-        reportResultList = dao.findAllByLinshiDengluma(app.getLinshiDenglumaToPrefs());
+        reportResultList = dao.findAllByLinshiDengluma(app.getPreValue("linshiDengluma"));
         if (reportResultList != null && reportResultList.size() > 0) {
             Map<String, String> map = new HashMap<String, String>();
             int index = 0;
@@ -185,9 +185,10 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
                 map.put("reportResultList[" + index + "].createDate", result.createDate);
                 index++;
             }
+
             RequestParams params = new RequestParams(map);
-            params.put("voteMeetingId", app.temp.voteMeetingId);
-            params.put("medicalRegInfoId", app.temp.medicalRegInfoId);
+            params.put("voteMeetingId", reportResultList.get(0).voteMeetingId);
+            params.put("medicalRegInfoId", reportResultList.get(0).medicalRegInfoId);
             params.put("macAddress", app.macAddress);
 
             String url = Constant.BASE_HTTP + app.getServerUrlToPrefs() + "/tpms/mobile_save.mobile";
@@ -195,7 +196,7 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
                 @Override
                 public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
                     if (response.optInt(Constant.STATUS) == 1) {
-                        mobile_voteConfirm();
+                        mobile_voteConfirm(app.getPreValue("linshiDengluma"), reportResultList.get(0).voteMeetingId, reportResultList.get(0).medicalRegInfoId);
                     }
                 }
 
@@ -209,7 +210,7 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
     /**
      * 确认提交
      */
-    private void mobile_voteConfirm() {
+    private void mobile_voteConfirm(final String dengluma, final String voteMeetingId, final String medicalRegInfoId) {
         if (app.getLinshiDenglumaToPrefs() == null) return;
         List<Progress> progressList = dao.queryProgressByLinshiDengluma(app.getLinshiDenglumaToPrefs());
         if (progressList == null || progressList.size() == 0) return;
@@ -224,9 +225,9 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
         if (isConfirm) {
             String url = Constant.BASE_HTTP + app.getServerUrlToPrefs() + "/tpms/mobile_voteConfirm.mobile";
             final RequestParams params = new RequestParams();
-            params.put("linshiDengluma", app.temp.linshiDengluma);//临时登陆码
-            params.put("medicalRegInfoId", app.temp.medicalRegInfoId);//执业机构主键
-            params.put("voteMeetingId", app.temp.voteMeetingId);//投票会议主键
+            params.put("linshiDengluma", dengluma);//临时登陆码
+            params.put("voteMeetingId", voteMeetingId);
+            params.put("medicalRegInfoId", medicalRegInfoId);
             params.put("macAddress", app.macAddress);
             VSClient.get(url, params, new JsonHttpResponseHandler() {
                 @Override
@@ -275,7 +276,7 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
                     et_linshiDengluma.setText(object.optString("linshiDengluma"));
                     if (object.optString("linshiDengluma") != null) {
                         //mobile_showAllReport(server_url);
-                        btn_start_vote.setEnabled(true);
+                        //btn_start_vote.setEnabled(true);
                     }
                 } else {
                     Toast.makeText(LoginActivity.this, response.optString(Constant.TIPMESSAGE), Toast.LENGTH_SHORT).show();
@@ -451,6 +452,7 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
         final Organization organization = mOrg.get(position);
         if (organization.medicalRegInfoId != null) {
+            app.selectionIndex = position;
             new AlertDialog.Builder(LoginActivity.this).setTitle("提示")
                     .setIconAttribute(android.R.attr.alertDialogIcon)
                     .setMessage("请确认您的单位是" + organization.medicalName)
@@ -489,7 +491,11 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
             }
             mobile_getLinshiDengluma(app.getServerUrlToPrefs());
         } else if (v.getId() == btn_start_vote.getId()) {//开始投票
-            mobile_getAllMessage(app.getServerUrlToPrefs());
+            if (et_linshiDengluma.getText() == null || et_linshiDengluma.getText().toString().length() == 0) {
+                Toast.makeText(LoginActivity.this, "请重新获取登录码", Toast.LENGTH_SHORT).show();
+            } else {
+                mobile_getAllMessage(app.getServerUrlToPrefs());
+            }
             /*new AlertDialog.Builder(LoginActivity.this).setTitle("提示")
                     .setIconAttribute(android.R.attr.alertDialogIcon)
                     .setMessage("请确认您的单位是" + mOrg.get(pos).medicalName)
@@ -544,14 +550,21 @@ public class LoginActivity extends BaseActivity implements AdapterView.OnItemSel
      */
     @Override
     public void onLoaded() {
-        app.setPreKey("linshiDengluma",app.temp.linshiDengluma);//临时登陆码
-        app.setPreKey("medicalRegInfoId",app.temp.medicalRegInfoId);//执业机构主键
-        app.setPreKey("voteMeetingId",app.temp.voteMeetingId);//投票会议主键
+        app.setPreKey("linshiDengluma", app.temp.linshiDengluma);//临时登陆码
+        app.setPreKey("medicalRegInfoId", app.temp.medicalRegInfoId);//执业机构主键
+        app.setPreKey("voteMeetingId", app.temp.voteMeetingId);//投票会议主键
         if (progressDialog != null) {
             progressDialog.dismiss();
         }
         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
         startActivity(intent);
         finish();
+    }
+
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+
     }
 }

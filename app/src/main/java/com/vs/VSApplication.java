@@ -39,9 +39,9 @@ public class VSApplication extends Application {
     public Temp temp = new Temp();
     public static SharedPreferences mUrlPrefs;//保存服务器地址
     public static SharedPreferences mLinshiDenglumaPrefs;//登录码
-
     public static SharedPreferences sp;//存储临时信息
 
+    public    int selectionIndex = 0;
 
     public static VSApplication getApplication(Context context) {
         return (VSApplication) context.getApplicationContext();

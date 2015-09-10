@@ -32,7 +32,10 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 
 public class MainActivity extends BaseActivity implements AdapterView.OnItemClickListener, AdapterView.OnClickListener {
@@ -58,6 +61,8 @@ public class MainActivity extends BaseActivity implements AdapterView.OnItemClic
         gridView.setAdapter(reportAdapter);
 
         app.setLinshiDenglumaToPrefs(app.temp.linshiDengluma);
+        dao.saveDengluma(app.temp.linshiDengluma);//存储登录码
+
         mobile_showAllReport_local();
     }
 

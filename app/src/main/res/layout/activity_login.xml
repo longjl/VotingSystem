@@ -73,7 +73,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@drawable/btn_bg"
-                android:enabled="false"
                 android:minHeight="@dimen/view_min_height"
                 android:text="开始投票"
                 android:textColor="@android:color/white"

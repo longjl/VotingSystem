@@ -87,6 +87,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         report.append("reportName text,");//报表名字
         report.append("voteCount int)");//报表选项数量
         db.execSQL(report.toString());*/
+
+        StringBuffer dengluma_sql = new StringBuffer("create table if not exists dengluma(");
+        dengluma_sql.append("_id INTEGER PRIMARY KEY,");//主键
+        dengluma_sql.append("pingjiarenLinshiDengluma text)");//评价人临时登录码
+        db.execSQL(dengluma_sql.toString());
     }
 
     @Override

@@ -462,4 +462,55 @@ public class ReportDao {
                 });
         return cursor.getCount();
     }
+
+    //**********************dengluma 表**********************
+
+    /**
+     * 根据登录码查询数量
+     */
+    public int findDenglumaCount(final String pingjiarenLinshiDengluma) {
+        StringBuffer buffer = new StringBuffer("select pingjiarenLinshiDengluma from dengluma ");
+        buffer.append(" where pingjiarenLinshiDengluma=?");
+
+        Cursor cursor = db.rawQuery(buffer.toString(),
+                new String[]{
+                        pingjiarenLinshiDengluma
+                });
+        return cursor.getCount();
+    }
+
+    /**
+     * 将登录码存入数据库中
+     *
+     * @param pingjiarenLinshiDengluma
+     */
+    public void saveDengluma(final String pingjiarenLinshiDengluma) {
+        if (findDenglumaCount(pingjiarenLinshiDengluma) <= 0) {
+            db.execSQL("insert into dengluma values(null,?)", new String[]{pingjiarenLinshiDengluma});
+        }
+    }
+
+    /**
+     * 查询所有的登录码
+     */
+    public List<String> findDenglumas() {
+        Cursor cursor = db.rawQuery("select pingjiarenLinshiDengluma from dengluma", null);
+        List<String> list = null;
+        if (null != cursor) {
+            list = new ArrayList<String>();
+            while (cursor.moveToNext()) {
+                list.add(cursor.getString(cursor.getColumnIndex("pingjiarenLinshiDengluma")));
+            }
+        }
+        return list;
+    }
+
+    /**
+     * 删除登录码
+     *
+     * @param pingjiarenLinshiDengluma
+     */
+    public void deleteDengluma(final String pingjiarenLinshiDengluma) {
+        db.delete("dengluma", "pingjiarenLinshiDengluma=?", new String[]{pingjiarenLinshiDengluma});
+    }
 }
